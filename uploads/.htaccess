@@ -1,0 +1,30 @@
+# Tắt thực thi PHP trong thư mục này (Security Hardening)
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+# Chặn mọi truy cập vào các file không phải là ảnh
+<FilesMatch "(?i)\.(php|php3|php4|php5|php7|php8|phtml|pl|py|jsp|asp|htm|html|shtml|sh|cgi)$">
+    Require all denied
+</FilesMatch>
+
+# Ép kiểu mimetype cho các file không xác định để tải xuống thay vì thực thi
+ForceType application/octet-stream
+<FilesMatch "(?i)\.(jpe?g|png|gif|webp)$">
+    ForceType image/jpeg
+</FilesMatch>
+<FilesMatch "(?i)\.png$">
+    ForceType image/png
+</FilesMatch>
+<FilesMatch "(?i)\.gif$">
+    ForceType image/gif
+</FilesMatch>
+<FilesMatch "(?i)\.webp$">
+    ForceType image/webp
+</FilesMatch>

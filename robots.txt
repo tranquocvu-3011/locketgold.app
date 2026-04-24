@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+Disallow: /quan-tri
+Disallow: /lich-su
+Disallow: /cong-cu
+Disallow: /dang-nhap
+Disallow: /download-dns
+Disallow: /includes/
+Disallow: /config/
+Disallow: /*.php$
+Disallow: /*.sqlite$
+
+# Chỉ cho Google Bot crawl các trang công khai
+User-agent: Googlebot
+Allow: /trang-chu
+Allow: /huong-dan
+Allow: /dich-vu-vip
+Allow: /lien-he
+Allow: /kinh-nghiem
+Allow: /bai-viet
+
+Sitemap: /sitemap.xml

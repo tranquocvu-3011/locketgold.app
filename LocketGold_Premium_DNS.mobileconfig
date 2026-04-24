@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>DNSSettings</key>
+            <dict>
+                <key>DNSProtocol</key>
+                <string>HTTPS</string>
+                <key>ServerURL</key>
+                <string>https://my.ublockdns.com/t2z96p5n</string>
+            </dict>
+            <key>PayloadDescription</key>
+            <string>Locket Gold Quốc Vũ Anti-Revoke Server. Chặn kết nối máy chủ Apple và RevenueCat để bảo vệ phiên bản Premium.</string>
+            <key>PayloadDisplayName</key>
+            <string>LocketGold.App - Locket Gold Quốc Vũ</string>
+            <key>PayloadIdentifier</key>
+            <string>com.apple.dnsSettings.managed.locketgold.quocvu</string>
+            <key>PayloadType</key>
+            <string>com.apple.dnsSettings.managed</string>
+            <key>PayloadUUID</key>
+            <string>c38c23ac-7c85-45d2-a744-8d9282361ac1</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>ProhibitDisablement</key>
+            <false/>
+        </dict>
+    </array>
+    <key>PayloadDescription</key>
+    <string>✨ Máy chủ Quốc Vũ Premium Network.&#xA;🔒 Duy trì trạng thái VIP Locket Gold Vĩnh Viễn&#xA;🛡️ Chặn 100% Thu hồi chứng chỉ Apple&#xA;🚀 Tối ưu hóa API tốc độ cao</string>
+    <key>PayloadDisplayName</key>
+    <string>Premium Network - Quốc Vũ 💛</string>
+    <key>PayloadIdentifier</key>
+    <string>com.quocvu.locketgold.dns.system</string>
+    <key>PayloadOrganization</key>
+    <string>Quốc Vũ Hub System</string>
+    <key>PayloadRemovalDisallowed</key>
+    <false/>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadUUID</key>
+    <string>98a2c262-b2a1-4cf1-83d1-e6e73affafc6</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+</dict>
+</plist>

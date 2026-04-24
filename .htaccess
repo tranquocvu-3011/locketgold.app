@@ -1,0 +1,65 @@
+# Locket Gold — Apache Config
+AddDefaultCharset UTF-8
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Bỏ qua các file hoặc thư mục đã tồn tại thật
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # Cài đặt route tất cả uri ảo về index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Chặn truy cập trực tiếp vào file nhạy cảm
+<FilesMatch "\.(sqlite|sqlite3|env|log|bak|sql)$">
+    Require all denied
+</FilesMatch>
+
+# Chặn dotfiles (.env, .htaccess, .git...)
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Chặn truy cập file PHP nội bộ (seeder, config, includes)
+<FilesMatch "^(seeder)\.php$">
+    Require all denied
+</FilesMatch>
+<IfModule mod_rewrite.c>
+    RewriteRule ^(config|includes)/ - [F,L]
+</IfModule>
+
+# Bảo mật Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://api.revenuecat.com; frame-ancestors 'self'"
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
+
+# Cache tĩnh cho assets (CSS, JS, ảnh)
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType video/mp4 "access plus 1 month"
+</IfModule>
+
+# Cấu hình PHP (chỉ hoạt động với mod_php, bỏ qua an toàn trên PHP-FPM/CGI)
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10000M
+    php_value post_max_size 10000M
+    php_value max_execution_time 3600
+    php_value max_input_time 3600
+    php_value memory_limit 10000M
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 10000M
+    php_value post_max_size 10000M
+    php_value max_execution_time 3600
+    php_value max_input_time 3600
+    php_value memory_limit 10000M
+</IfModule>

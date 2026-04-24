@@ -1,0 +1,26 @@
+# Locket Gold — Git Ignore
+
+# Môi trường
+.env
+.user.ini
+.installed
+
+# Uploads (dữ liệu người dùng)
+uploads/receipts/
+uploads/feedbacks/
+
+# Cache & Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ZIP backup
+*.zip
+*.7z
+*.rar
