@@ -1,5 +1,11 @@
 <?php
 // Auto-migrate
+// Cho phép chạy trực tiếp qua URL
+if (!isset($pdo)) {
+    define('IN_APP', true);
+    require_once __DIR__ . '/config/database.php';
+}
+echo "<pre>Running migration...\n";
 // $pdo->exec("ALTER TABLE activations ADD COLUMN edit_count INT DEFAULT 0");
 // $pdo->exec("ALTER TABLE users ADD COLUMN role_expires_at DATETIME NULL");
 // $pdo->exec("ALTER TABLE users ADD COLUMN register_ip VARCHAR(45) DEFAULT NULL");
@@ -200,3 +206,32 @@ try {
     )");
 } catch (Exception $e) {
 }
+
+// Receipt Mapping 1:1 — Chống mất Gold
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS receipt_assignments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        receipt_hash VARCHAR(64) NOT NULL,
+        receipt_index INT NOT NULL DEFAULT 0,
+        assigned_uid VARCHAR(255) DEFAULT NULL,
+        assigned_by VARCHAR(255) DEFAULT NULL,
+        assigned_at DATETIME DEFAULT NULL,
+        last_used_at DATETIME DEFAULT NULL,
+        use_count INT DEFAULT 0,
+        is_active TINYINT(1) DEFAULT 1,
+        UNIQUE KEY idx_uid (assigned_uid),
+        KEY idx_hash (receipt_hash),
+        KEY idx_active (is_active)
+    )");
+} catch (Exception $e) {
+}
+
+// Auto-migrate: is_vip_notified
+try {
+    $pdo->exec("ALTER TABLE users ADD COLUMN is_vip_notified TINYINT(1) DEFAULT 0");
+} catch (Exception $e) {
+}
+
+echo "✅ Migration completed successfully!\n";
+echo "Tables created/updated: users, activations, rate_limits, resolved_cache, articles, global_settings, agency_settings, receipts, contacts, feedbacks, bank_transactions, receipt_assignments\n";
+echo "</pre>";

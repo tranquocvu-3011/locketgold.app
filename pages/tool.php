@@ -59,6 +59,45 @@
                             <li>Nếu app vẫn chưa lên Gold, vui lòng vào trang Hướng Dẫn và làm chuẩn theo mục <strong>"2. Khắc phục lỗi mất Gold"</strong>.</li>
                         </ul>
                     </div>
+
+                    <!-- CẢNH BÁO QUAN TRỌNG: 3 ĐIỀU CẤM -->
+                    <div style="background:linear-gradient(135deg, rgba(239,68,68,0.12), rgba(249,115,22,0.08)); border:2px solid rgba(239,68,68,0.4); border-radius:12px; padding:18px; margin-bottom:20px; text-align:left;">
+                        <div style="font-size:16px; font-weight:800; color:#ef4444; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                            🚨 3 ĐIỀU CẤM KỴ — ĐỌC KỸ ĐỂ KHÔNG MẤT GOLD
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:10px;">
+                            <div style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:rgba(239,68,68,0.08); border-radius:8px;">
+                                <span style="font-size:20px; flex-shrink:0;">❌</span>
+                                <div>
+                                    <div style="font-weight:700; color:var(--text-0); font-size:14px; margin-bottom:2px;">KHÔNG bấm "Khôi phục đơn hàng" (Restore Purchases)</div>
+                                    <div style="font-size:12px; color:var(--text-2);">Nút này sẽ gọi Apple xác minh → Apple không tìm thấy giao dịch → <strong>Mất Gold ngay lập tức</strong>.</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:rgba(249,115,22,0.08); border-radius:8px;">
+                                <span style="font-size:20px; flex-shrink:0;">❌</span>
+                                <div>
+                                    <div style="font-weight:700; color:var(--text-0); font-size:14px; margin-bottom:2px;">KHÔNG tắt DNS "Premium Network"</div>
+                                    <div style="font-size:12px; color:var(--text-2);">DNS bảo vệ chặn kiểm tra trạng thái. Tắt DNS = app tự động kiểm tra = <strong>Mất Gold</strong>.</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:rgba(251,191,36,0.08); border-radius:8px;">
+                                <span style="font-size:20px; flex-shrink:0;">❌</span>
+                                <div>
+                                    <div style="font-weight:700; color:var(--text-0); font-size:14px; margin-bottom:2px;">KHÔNG bật VPN khi dùng Locket</div>
+                                    <div style="font-size:12px; color:var(--text-2);">VPN override DNS → app kết nối trực tiếp máy chủ → <strong>Mất Gold</strong>. Tắt VPN trước khi mở Locket.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- THÔNG BÁO AUTO-RECOVERY -->
+                    <div style="background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.25); border-radius:10px; padding:14px; margin-bottom:20px; text-align:left;">
+                        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-1); line-height:1.5;">
+                            <span style="font-size:18px;">🔄</span>
+                            <div><strong style="color:#3b82f6;">Hệ thống Auto-Recovery:</strong> Máy chủ tự động kiểm tra và khôi phục trạng thái Gold cho bạn mỗi 15 phút. Nếu vô tình mất Gold, hãy chờ tối đa 15 phút hoặc vào trang <a href="/cong-cu" style="color:#3b82f6; font-weight:700;">Công cụ</a> để kích hoạt lại thủ công.</div>
+                        </div>
+                    </div>
+
                     <?php if ($is_vip_or_higher): ?>
                         <div class="alert alert-info" style="text-align:left;">
                             <strong>Bước tiếp theo:</strong> Cài đặt DNS Profile chống thu hồi để duy trì trạng thái Premium suốt 1
@@ -75,6 +114,7 @@
                     <a href="/cong-cu" class="btn btn-outline">Kích hoạt ID khác</a>
                 </div>
 
+
             <?php else: ?>
                 <!-- HEADER -->
                 <div id="tool-header" class="page-shell mb-lg" style="text-align:center; animation:cardIn 0.5s ease forwards;">
@@ -82,6 +122,27 @@
                     <p class="hero-sub" style="margin-bottom:0;">Chọn phương thức kích hoạt phù hợp với nhu cầu của bạn.</p>
                 </div>
 
+                <?php if ($is_vip_or_higher && !empty($reactivate_uids)): ?>
+                <!-- BANNER NHẮC CÀI DNS -->
+                <div id="dns-reminder" class="card" style="max-width:var(--layout-max); margin-bottom:20px; border:2px solid rgba(52,211,153,0.4); background:linear-gradient(135deg, rgba(52,211,153,0.08), rgba(59,130,246,0.05)); animation:cardIn 0.5s 0.05s ease both;">
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                        <div style="width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:rgba(52,211,153,0.15); flex-shrink:0;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        </div>
+                        <div style="flex:1; min-width:200px;">
+                            <div style="font-size:15px; font-weight:800; color:var(--text-0); margin-bottom:4px;">🛡️ DNS Bảo Vệ Gold — Quan Trọng!</div>
+                            <div style="font-size:13px; color:var(--text-2); line-height:1.6;">
+                                DNS là <strong>tuyến phòng thủ chính</strong> giữ Gold ổn định. Hãy đảm bảo bạn đã cài DNS Profile và <strong>KHÔNG TẮT</strong> nó.
+                                Kiểm tra: <strong>Cài đặt → VPN & Quản lý thiết bị → Premium Network</strong> phải đang bật.
+                            </div>
+                        </div>
+                        <a href="/download-dns" style="padding:10px 20px; border-radius:10px; background:linear-gradient(135deg,#10b981,#059669); color:#fff; font-weight:700; font-size:13px; text-decoration:none; white-space:nowrap; transition:all 0.2s; display:flex; align-items:center; gap:6px;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Tải/Cập nhật DNS
+                        </a>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- 2-COLUMN LAYOUT -->
                 <div id="tool-grid"
@@ -397,9 +458,12 @@
                                 <ol style="margin:0 0 14px 18px; color:var(--text-1); font-size:13.5px; line-height:1.6;">
                                     <li>Đổi DNS về <strong>"Tự động"</strong> trong Cài đặt iPhone.</li>
                                     <li>Chọn lại ID trong danh sách bên dưới và bấm kích hoạt lại.</li>
-                                    <li>Vào ứng dụng Locket, ấn nút <strong>Khôi phục đơn hàng (Restore Purchases)</strong>.</li>
-                                    <li>Chỉ khi lên Gold thành công mới đổi DNS sang <strong>"Locket Gold Premium"</strong>.</li>
+                                    <li><strong>Đóng hoàn toàn</strong> ứng dụng Locket ở màn hình đa nhiệm, sau đó mở lại app.</li>
+                                    <li>Khi đã lên Gold thành công → đổi DNS sang <strong>"Locket Gold Premium"</strong>.</li>
                                 </ol>
+                                <div style="background:rgba(239,68,68,0.08); border:1px dashed rgba(239,68,68,0.3); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:12px; color:var(--text-2); line-height:1.5;">
+                                    🚫 <strong style="color:#ef4444;">TUYỆT ĐỐI KHÔNG</strong> bấm nút "Khôi phục đơn hàng" (Restore Purchases) trong app Locket. Nút này sẽ gọi Apple xác minh và <strong>làm mất Gold ngay lập tức</strong>.
+                                </div>
 
                                 <form action="/cong-cu" method="POST" id="formReactivate">
                                     <?= csrf_field() ?>

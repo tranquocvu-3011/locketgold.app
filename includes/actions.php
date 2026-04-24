@@ -534,15 +534,60 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 }
                             }
                             
-                            // ── RECEIPT POOL LOGIC ──
+                            // ── RECEIPT MAPPING 1:1 — Chống mất Gold ──
                             $selected_receipt = APPLE_RECEIPT_BASE64;
                             try {
                                 $stmt_r = $pdo->query("SELECT setting_value FROM global_settings WHERE setting_key = 'premium_receipts'");
                                 $r_val = $stmt_r->fetchColumn();
                                 if ($r_val) {
-                                    $r_arr = array_filter(array_map('trim', explode("\n", $r_val)));
+                                    $r_arr = array_values(array_filter(array_map('trim', explode("\n", $r_val))));
                                     if (!empty($r_arr)) {
-                                        $selected_receipt = $r_arr[array_rand($r_arr)];
+                                        // 1. Kiểm tra UID này đã được gán receipt chưa
+                                        $stmt_check = $pdo->prepare("SELECT receipt_index FROM receipt_assignments WHERE assigned_uid = ? AND is_active = 1 LIMIT 1");
+                                        $stmt_check->execute([$injected_uid]);
+                                        $existing = $stmt_check->fetch();
+
+                                        if ($existing && isset($r_arr[$existing['receipt_index']])) {
+                                            // Dùng lại receipt đã gán trước đó (ổn định, không collision)
+                                            $selected_receipt = $r_arr[$existing['receipt_index']];
+                                            $pdo->prepare("UPDATE receipt_assignments SET last_used_at = NOW(), use_count = use_count + 1 WHERE assigned_uid = ?")
+                                                ->execute([$injected_uid]);
+                                        } else {
+                                            // 2. Tìm receipt chưa gán cho ai (ưu tiên nhất)
+                                            $assigned_indexes = [];
+                                            $stmt_used = $pdo->query("SELECT DISTINCT receipt_index FROM receipt_assignments WHERE is_active = 1 AND assigned_uid IS NOT NULL");
+                                            while ($row = $stmt_used->fetch()) {
+                                                $assigned_indexes[] = (int)$row['receipt_index'];
+                                            }
+
+                                            $free_index = null;
+                                            for ($i = 0; $i < count($r_arr); $i++) {
+                                                if (!in_array($i, $assigned_indexes)) {
+                                                    $free_index = $i;
+                                                    break;
+                                                }
+                                            }
+
+                                            if ($free_index !== null) {
+                                                // Có receipt trống → gán cho UID này
+                                                $chosen_index = $free_index;
+                                            } else {
+                                                // 3. Hết receipt trống → chọn receipt ÍT user nhất
+                                                $stmt_least = $pdo->query("SELECT receipt_index, COUNT(*) as cnt FROM receipt_assignments WHERE is_active = 1 GROUP BY receipt_index ORDER BY cnt ASC LIMIT 1");
+                                                $least = $stmt_least->fetch();
+                                                $chosen_index = $least ? (int)$least['receipt_index'] : 0;
+                                            }
+
+                                            $selected_receipt = $r_arr[$chosen_index] ?? $r_arr[0];
+                                            $receipt_hash = hash('sha256', $selected_receipt);
+
+                                            // Xóa assignment cũ nếu có (cleanup)
+                                            $pdo->prepare("DELETE FROM receipt_assignments WHERE assigned_uid = ?")->execute([$injected_uid]);
+
+                                            // Gán receipt mới
+                                            $pdo->prepare("INSERT INTO receipt_assignments (receipt_hash, receipt_index, assigned_uid, assigned_by, assigned_at, last_used_at, use_count) VALUES (?, ?, ?, ?, NOW(), NOW(), 1)")
+                                                ->execute([$receipt_hash, $chosen_index, $injected_uid, $current_user]);
+                                        }
                                     }
                                 }
                             } catch (Exception $e) {}

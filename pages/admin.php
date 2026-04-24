@@ -927,17 +927,132 @@
                                 </form>
                             </div>
 
-                            <!-- Nhập Danh sách Hóa đơn (Receipt Pool) -->
+                            <!-- Receipt Pool Dashboard -->
                             <div class="admin-panel" style="margin-top:24px;">
-                                <h2 class="heading mb-md">Hồ Chứa Hóa Đơn (Receipt Pool) <span style="background:var(--green); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:8px;">MỚI</span></h2>
-                                <p class="desc mb-md">Nhập danh sách các mã <code>APPLE_RECEIPT_BASE64</code>. Khi kích hoạt cho khách, hệ thống sẽ xoay vòng ngẫu nhiên 1 hóa đơn, giảm rủi ro đè khách. (Mỗi dòng 1 mã, bỏ trống để dùng mã gốc)</p>
-                                <form method="POST" style="display:flex; flex-direction:column; gap:16px;">
+                                <h2 class="heading mb-md">Hồ Chứa Hóa Đơn (Receipt Pool) <span style="background:var(--green); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; margin-left:8px;">SMART MAPPING</span></h2>
+                                <p class="desc mb-md">Hệ thống <strong>Receipt Mapping 1:1</strong> — mỗi UID được gán cố định 1 receipt, chống mất Gold do collision. Nhập danh sách các mã <code>APPLE_RECEIPT_BASE64</code> (mỗi dòng 1 mã).</p>
+                                
+                                <?php
+                                // Thống kê receipt pool
+                                $receipt_pool_raw = $settings['premium_receipts'] ?? '';
+                                $receipt_pool_arr = array_values(array_filter(array_map('trim', explode("\n", $receipt_pool_raw))));
+                                $total_receipts = count($receipt_pool_arr);
+                                $is_single_receipt_mode = ($total_receipts <= 1);
+                                
+                                $assigned_count = 0;
+                                $receipt_assignments_list = [];
+                                try {
+                                    $assigned_count = (int)$pdo->query("SELECT COUNT(*) FROM receipt_assignments WHERE is_active = 1 AND assigned_uid IS NOT NULL")->fetchColumn();
+                                    $receipt_assignments_list = $pdo->query("SELECT ra.*, a.injected_by as web_user FROM receipt_assignments ra LEFT JOIN activations a ON a.uid = ra.assigned_uid ORDER BY ra.last_used_at DESC LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
+                                } catch (Exception $e) {}
+                                
+                                if ($is_single_receipt_mode) {
+                                    $total_active = 0;
+                                    try { $total_active = (int)$pdo->query("SELECT COUNT(DISTINCT uid) FROM activations WHERE status = 'Activated (Live)'")->fetchColumn(); } catch(Exception $e) {}
+                                    $health_color = '#f59e0b';
+                                    $health_text = 'DNS bảo vệ';
+                                    $mode_label = '1 RECEIPT';
+                                    $mode_color = '#f59e0b';
+                                } else {
+                                    $free_receipts = max(0, $total_receipts - $assigned_count);
+                                    $health_color = $free_receipts > 5 ? '#10b981' : ($free_receipts > 0 ? '#f59e0b' : '#ef4444');
+                                    $health_text = $free_receipts > 5 ? 'Tốt' : ($free_receipts > 0 ? 'Sắp hết' : 'Hết receipt trống!');
+                                    $mode_label = 'MULTI RECEIPT';
+                                    $mode_color = '#10b981';
+                                }
+                                ?>
+
+                                <?php if ($is_single_receipt_mode): ?>
+                                <div style="background:linear-gradient(135deg, rgba(251,191,36,0.1), rgba(249,115,22,0.05)); border:2px solid rgba(251,191,36,0.4); border-radius:12px; padding:16px; margin-bottom:20px;">
+                                    <div style="font-size:15px; font-weight:800; color:#f59e0b; margin-bottom:8px;">⚡ Chế độ 1 Receipt — Bảo vệ bằng DNS</div>
+                                    <div style="font-size:13px; color:var(--text-1); line-height:1.7;">
+                                        Bạn đang dùng <strong>1 receipt duy nhất</strong> cho tất cả khách hàng. Cách hệ thống hoạt động:
+                                        <ul style="margin:8px 0 0 18px; padding:0;">
+                                            <li>Mỗi lần kích hoạt, Gold <strong>chuyển từ khách cũ sang khách mới</strong> trên server RevenueCat.</li>
+                                            <li>Tất cả khách cũ vẫn giữ Gold nhờ <strong>DNS chặn</strong> app kiểm tra server.</li>
+                                            <li>Cron Auto-Recovery chỉ re-activate <strong>UID gần nhất</strong> (tránh ping-pong transfer).</li>
+                                            <li>Muốn an toàn hơn? <strong>Thêm nhiều receipt</strong> vào pool → hệ thống tự chuyển sang chế độ Mapping 1:1.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+
+                                <!-- Stats Cards -->
+                                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:20px;">
+                                    <div style="background:var(--bg-2); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center;">
+                                        <div style="font-size:28px; font-weight:800; color:var(--accent-bright);"><?= $total_receipts ?: '1 (.env)' ?></div>
+                                        <div style="font-size:12px; color:var(--text-2); margin-top:4px;">Tổng Receipt</div>
+                                    </div>
+                                    <div style="background:var(--bg-2); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center;">
+                                        <?php if ($is_single_receipt_mode): ?>
+                                        <div style="font-size:28px; font-weight:800; color:#3b82f6;"><?= $total_active ?? 0 ?></div>
+                                        <div style="font-size:12px; color:var(--text-2); margin-top:4px;">UID đang Active</div>
+                                        <?php else: ?>
+                                        <div style="font-size:28px; font-weight:800; color:#3b82f6;"><?= $assigned_count ?></div>
+                                        <div style="font-size:12px; color:var(--text-2); margin-top:4px;">Đã gán</div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div style="background:var(--bg-2); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center;">
+                                        <?php if ($is_single_receipt_mode): ?>
+                                        <div style="font-size:16px; font-weight:800; color:#f59e0b; margin-top:6px;">🛡️ DNS</div>
+                                        <div style="font-size:12px; color:var(--text-2); margin-top:4px;">Phương thức bảo vệ</div>
+                                        <?php else: ?>
+                                        <div style="font-size:28px; font-weight:800; color:<?= $health_color ?>;"><?= $free_receipts ?></div>
+                                        <div style="font-size:12px; color:var(--text-2); margin-top:4px;">Còn trống</div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div style="background:var(--bg-2); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center;">
+                                        <div style="font-size:16px; font-weight:800; color:<?= $health_color ?>; margin-top:6px;">● <?= $health_text ?></div>
+                                        <div style="font-size:12px; color:var(--text-2); margin-top:4px;">Trạng thái</div>
+                                    </div>
+                                </div>
+
+                                <?php if (!$is_single_receipt_mode && $free_receipts <= 2 && $total_receipts > 0): ?>
+                                <div style="background:rgba(239,68,68,0.08); border:1px dashed rgba(239,68,68,0.4); border-radius:10px; padding:14px; margin-bottom:16px; font-size:13px; color:var(--text-1); line-height:1.5;">
+                                    ⚠️ <strong style="color:#ef4444;">Cảnh báo:</strong> Pool sắp/đã hết receipt trống. Nếu có khách mới kích hoạt, receipt sẽ phải chia sẻ và có nguy cơ collision. Hãy thêm receipt mới vào pool!
+                                </div>
+                                <?php endif; ?>
+
+                                <!-- Textarea nhập receipt -->
+                                <form method="POST" style="display:flex; flex-direction:column; gap:16px; margin-bottom:24px;">
                                     <input type="hidden" name="action" value="admin_save_receipt_pool">
                                     <div class="field">
-                                        <textarea name="premium_receipts" class="input" style="height:200px; padding:12px; font-family:monospace; white-space:pre;" placeholder="VD:&#10;MIIV...abc1&#10;MIIV...xyz2"><?= htmlspecialchars($settings['premium_receipts'] ?? '') ?></textarea>
+                                        <label>Danh sách Receipt (mỗi dòng 1 mã)</label>
+                                        <textarea name="premium_receipts" class="input" style="height:160px; padding:12px; font-family:monospace; white-space:pre; font-size:11px;" placeholder="VD:&#10;MIIV...abc1&#10;MIIV...xyz2"><?= htmlspecialchars($settings['premium_receipts'] ?? '') ?></textarea>
                                     </div>
                                     <button type="submit" class="btn btn-primary">Lưu Danh Sách Hóa Đơn</button>
                                 </form>
+
+                                <!-- Bảng Receipt Assignments -->
+                                <?php if (!empty($receipt_assignments_list)): ?>
+                                <div style="margin-top:8px;">
+                                    <h3 style="font-size:15px; font-weight:700; margin-bottom:12px; color:var(--text-0);">📋 Mapping Receipt → UID (<?= count($receipt_assignments_list) ?> gần nhất)</h3>
+                                    <div style="overflow-x:auto; border:1px solid var(--border); border-radius:12px;">
+                                        <table class="admin-table" style="width:100%; font-size:12px;">
+                                            <thead>
+                                                <tr>
+                                                    <th style="padding:10px 12px; white-space:nowrap;">Receipt #</th>
+                                                    <th style="padding:10px 12px;">Locket UID</th>
+                                                    <th style="padding:10px 12px;">User Web</th>
+                                                    <th style="padding:10px 12px; white-space:nowrap;">Lần dùng</th>
+                                                    <th style="padding:10px 12px; white-space:nowrap;">Lần cuối</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($receipt_assignments_list as $ra): ?>
+                                                <tr>
+                                                    <td style="padding:8px 12px; font-weight:700; color:var(--accent-bright);">#<?= $ra['receipt_index'] ?></td>
+                                                    <td style="padding:8px 12px; font-family:monospace; font-size:11px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><?= htmlspecialchars($ra['assigned_uid'] ?? '—') ?></td>
+                                                    <td style="padding:8px 12px;"><?= htmlspecialchars($ra['assigned_by'] ?? $ra['web_user'] ?? '—') ?></td>
+                                                    <td style="padding:8px 12px; text-align:center;"><?= $ra['use_count'] ?></td>
+                                                    <td style="padding:8px 12px; font-size:11px; color:var(--text-2); white-space:nowrap;"><?= $ra['last_used_at'] ? date('d/m H:i', strtotime($ra['last_used_at'])) : '—' ?></td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
                             </div>
 
                             <!-- Video Hướng Dẫn -->

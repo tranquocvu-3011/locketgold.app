@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
+<!-- https://console.cron-job.org/jobs -->
 <dict>
     <key>PayloadContent</key>
     <array>
@@ -10,10 +11,32 @@
                 <key>DNSProtocol</key>
                 <string>HTTPS</string>
                 <key>ServerURL</key>
-                <string>https://my.ublockdns.com/t2z96p5n</string>
+                <string>https://dns.nextdns.io/6aa26e</string>
             </dict>
+            <key>OnDemandRules</key>
+            <array>
+                <!-- Luôn bật DNS trên WiFi -->
+                <dict>
+                    <key>Action</key>
+                    <string>Connect</string>
+                    <key>InterfaceTypeMatch</key>
+                    <string>WiFi</string>
+                </dict>
+                <!-- Luôn bật DNS trên 4G/5G -->
+                <dict>
+                    <key>Action</key>
+                    <string>Connect</string>
+                    <key>InterfaceTypeMatch</key>
+                    <string>Cellular</string>
+                </dict>
+                <!-- Fallback: luôn bật trên mọi mạng khác -->
+                <dict>
+                    <key>Action</key>
+                    <string>Connect</string>
+                </dict>
+            </array>
             <key>PayloadDescription</key>
-            <string>Locket Gold Quốc Vũ Anti-Revoke Server. Chặn kết nối máy chủ Apple và RevenueCat để bảo vệ phiên bản Premium.</string>
+            <string>Locket Gold Premium Anti-Revoke Server. Chặn kết nối máy chủ RevenueCat và Apple StoreKit để duy trì trạng thái Gold vĩnh viễn.</string>
             <key>PayloadDisplayName</key>
             <string>LocketGold.App - Locket Gold Quốc Vũ</string>
             <key>PayloadIdentifier</key>
@@ -29,7 +52,7 @@
         </dict>
     </array>
     <key>PayloadDescription</key>
-    <string>✨ Máy chủ Quốc Vũ Premium Network.&#xA;🔒 Duy trì trạng thái VIP Locket Gold Vĩnh Viễn&#xA;🛡️ Chặn 100% Thu hồi chứng chỉ Apple&#xA;🚀 Tối ưu hóa API tốc độ cao</string>
+    <string>✨ Máy chủ Quốc Vũ Premium Network.&#xA;🔒 Duy trì trạng thái VIP Locket Gold Vĩnh Viễn&#xA;🛡️ Chặn 100% Thu hồi chứng chỉ Apple&#xA;🚀 Tối ưu hóa API tốc độ cao&#xA;&#xA;⚙️ DNS luôn tự động bật lại khi chuyển mạng (WiFi/4G/5G)&#xA;⚠️ KHÔNG TẮT profile này để đảm bảo Gold ổn định</string>
     <key>PayloadDisplayName</key>
     <string>Premium Network - Quốc Vũ 💛</string>
     <key>PayloadIdentifier</key>
@@ -44,5 +67,10 @@
     <string>98a2c262-b2a1-4cf1-83d1-e6e73affafc6</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
+    <key>ConsentText</key>
+    <dict>
+        <key>default</key>
+        <string>Profile DNS này bảo vệ trạng thái Locket Gold Premium của bạn. DNS sẽ tự động bật lại khi chuyển mạng WiFi/4G. KHÔNG GỠ profile này để đảm bảo Gold ổn định.</string>
+    </dict>
 </dict>
 </plist>
