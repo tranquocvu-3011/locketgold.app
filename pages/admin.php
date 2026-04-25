@@ -157,26 +157,12 @@
                 color: var(--red);
             }
 
-            /* Desktop: Ẩn nút bottom, hiển thị nút trong sidebar */
-            .admin-bottom-home-btn {
-                display: none;
-            }
-
             .admin-sidebar-home {
                 display: flex;
             }
 
             /* ════ ADMIN MOBILE RESPONSIVE ════ */
             @media (max-width: 900px) {
-
-                /* Mobile: Hiển thị nút bottom, ẩn nút sidebar */
-                .admin-bottom-home-btn {
-                    display: block !important;
-                }
-
-                .admin-sidebar-home {
-                    display: none !important;
-                }
 
                 /* Toàn bộ wrap không được tràn */
                 .admin-full-page {
@@ -2459,20 +2445,6 @@
             </div>
         <?php endif; ?>
         </section>
-
-        <!-- Nút về trang chủ ở cuối Admin (chỉ hiện trên mobile) -->
-        <div class="admin-bottom-home-btn"
-            style="text-align: center; margin-top: 5px; margin-bottom: 5px; padding-bottom: max(5px, env(safe-area-inset-bottom));">
-            <a href="/trang-chu" class="btn btn-outline"
-                style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 50px; border: 2px solid var(--border); color: var(--text-0); background: var(--bg-1); text-decoration: none; transition: all 0.2s;">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                    <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-                <span style="font-weight: 600;">Về Trang Chủ</span>
-            </a>
-        </div>
         </div>
         <script>
             function showModal(id) { document.getElementById(id).classList.add('show'); }

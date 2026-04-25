@@ -493,15 +493,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $inject_msg = 'Vui lòng nhập ID hoặc Link.';
         } else {
             $original_uid = trim($inputValue);
-            $is_url = filter_var($original_uid, FILTER_VALIDATE_URL) || strpos($original_uid, 'locket.cam') !== false;
-            
             $clean_uid = $original_uid;
-            if ($is_url) {
-                $parsed = parse_url($original_uid, PHP_URL_PATH);
-                $clean_uid = $parsed ? basename($parsed) : $original_uid;
+            
+            // Nếu chuỗi chứa link Locket, dùng regex bóc tách username
+            if (strpos($original_uid, 'locket.cam') !== false) {
+                if (preg_match('/locket\.cam\/(?:u\/)?@?([a-zA-Z0-9_.]+)/i', $original_uid, $matches)) {
+                    $clean_uid = $matches[1];
+                } else {
+                    $parsed = parse_url($original_uid, PHP_URL_PATH);
+                    $clean_uid = $parsed ? basename($parsed) : $original_uid;
+                }
+            } else {
+                // Có thể họ copy dính chữ khác, cố gắng làm sạch
+                // Nếu không có dấu cách, lấy luôn
+                if (strpos($clean_uid, ' ') === false) {
+                    $clean_uid = ltrim($clean_uid, '@');
+                } else {
+                    // Cố gắng tìm chuỗi nào có vẻ là username (không dấu cách) ở cuối
+                    $parts = explode(' ', $clean_uid);
+                    $clean_uid = ltrim(end($parts), '@');
+                }
             }
+            
             $clean_uid = str_replace(['@', '/u/', 'u/'], '', $clean_uid);
-            $clean_uid = htmlspecialchars($clean_uid);
+            $clean_uid = htmlspecialchars(trim($clean_uid));
 
             // Pre-resolve UID từ cache (DB lưu injected_uid 28 ký tự, user nhập username)
             $resolved_uid = null;

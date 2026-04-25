@@ -1117,6 +1117,7 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
                 </div>
             </div>
         </div>
+    <?php endif; // End check not admin ?>
         <nav class="bottom-nav">
             <a href="/trang-chu" class="bottom-nav-item <?= $page == 'home' ? 'active' : '' ?>">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -1171,7 +1172,7 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
                 </a>
             <?php endif; ?>
         </nav>
-    <?php endif; // End check not admin ?>
+
 
     <main
         class="wrap <?= in_array($page, ['home', 'auth']) ? 'center-y' : '' ?> <?= $page === 'admin' ? 'admin-full-page' : '' ?>">
@@ -1426,22 +1427,21 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
         }
 
         .zalo-trigger {
-            width: 52px;
-            height: 52px;
-            background: #0068ff;
+            width: 54px;
+            height: 54px;
+            background: var(--bg-1);
+            border: 2px solid var(--accent);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 20px rgba(0, 104, 255, 0.4);
+            box-shadow: 0 6px 24px var(--accent-glow);
             cursor: pointer;
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             z-index: 2;
-            color: #fff;
-            font-weight: 800;
-            font-size: 15px;
-            letter-spacing: 0.5px;
+            padding: 4px;
+            box-sizing: border-box;
         }
 
         .zalo-trigger:hover {
@@ -1557,7 +1557,7 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
             <?php endforeach; ?>
         </div>
         <div class="zalo-trigger" id="zaloTrigger" onclick="toggleZaloPopup(event)" title="Hỗ trợ & Liên hệ">
-            Hỗ Trợ
+            <img src="<?= htmlspecialchars($logo_path) ?>" alt="Hỗ trợ" style="width:100%; height:100%; border-radius:50%; object-fit:contain;">
         </div>
     </div>
     <?php endif; endif; ?>

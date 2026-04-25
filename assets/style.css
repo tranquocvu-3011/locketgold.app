@@ -1901,10 +1901,7 @@
                 overflow-x: hidden !important;
             }
 
-            /* Hide bottom-nav on admin */
-            body:has(.admin-full-page) .bottom-nav {
-                display: none !important;
-            }
+
 
             /* Tool page grid → 1 cột */
             #tool-grid {
