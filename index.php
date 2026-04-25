@@ -373,7 +373,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($action)) {
         // Skip — actions.php sẽ validate lần nữa cho các action khác
         // Nhưng nếu action xử lý ở index.php, cần block
         $index_actions = [
-            'upload_receipt',
             'confirm_payment_auto',
             'admin_set_receipt_role',
             'admin_del_receipt',
@@ -1514,41 +1513,54 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
     </div>
 
     <?php if ($page !== 'admin'): ?>
+    <?php
+    $global_contacts = [];
+    try {
+        $global_contacts = $pdo->query("SELECT * FROM contacts ORDER BY id ASC LIMIT 5")->fetchAll();
+    } catch (Exception $e) {}
+    ?>
+    <?php if (!empty($global_contacts)): ?>
     <div class="floating-widget floating-zalo">
         <div id="zaloPopup" class="zalo-popup">
-            <a href="https://www.facebook.com/groups/1488436032791952/" target="_blank" class="zalo-popup-item"
-                style="color:#1877f2;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-                </svg>
-                Cộng đồng Facebook
+            <?php foreach ($global_contacts as $c): 
+                $type = strtolower($c['type'] ?? 'other');
+                $color = 'var(--text-0)';
+                $icon_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+                
+                if ($type === 'zalo') {
+                    $color = '#0068ff';
+                    $icon_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0068ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>';
+                } elseif ($type === 'facebook') {
+                    $color = '#1877F2';
+                    $icon_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1877F2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>';
+                } elseif ($type === 'telegram') {
+                    $color = '#229ED9';
+                    $icon_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#229ED9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
+                } elseif ($type === 'youtube') {
+                    $color = '#FF0000';
+                    $icon_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF0000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33 2.78 2.78 0 0 0 1.94 2c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.33 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>';
+                } elseif ($type === 'instagram') {
+                    $color = '#E1306C';
+                    $icon_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E1306C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>';
+                } elseif ($type === 'tiktok') {
+                    $color = '#000000';
+                    $icon_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>';
+                } elseif ($type === 'threads') {
+                    $color = '#000000';
+                    $icon_svg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22Z"/><path d="M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C13.6269 8 15.027 8.96962 15.6515 10.3725C15.8753 10.8754 16 11.4255 16 12Z"/></svg>';
+                }
+            ?>
+            <a href="<?= htmlspecialchars($c['link_url']) ?>" target="_blank" class="zalo-popup-item" style="color:<?= $color ?>;">
+                <?= $icon_svg ?>
+                <?= htmlspecialchars($c['platform_name']) ?>
             </a>
-            <a href="<?= htmlspecialchars($settings['zalo_baohanh_url'] ?? 'https://zalo.me/') ?>" target="_blank"
-                class="zalo-popup-item">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0068ff" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                    <polyline points="9 12 11 14 15 10"></polyline>
-                </svg>
-                Nhóm Zalo Bảo Hành
-            </a>
-            <a href="<?= htmlspecialchars($settings['zalo_hoidap_url'] ?? 'https://zalo.me/') ?>" target="_blank"
-                class="zalo-popup-item">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0068ff" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path
-                        d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z">
-                    </path>
-                </svg>
-                Zalo Hỏi Đáp
-            </a>
+            <?php endforeach; ?>
         </div>
-        <div class="zalo-trigger" id="zaloTrigger" onclick="toggleZaloPopup(event)" title="Liên hệ Zalo">
-            Zalo
+        <div class="zalo-trigger" id="zaloTrigger" onclick="toggleZaloPopup(event)" title="Hỗ trợ & Liên hệ">
+            Hỗ Trợ
         </div>
     </div>
-    <?php endif; ?>
+    <?php endif; endif; ?>
 
     <script>
         // Xử lý mũi tên lên đầu trang & Navbar cuộn
