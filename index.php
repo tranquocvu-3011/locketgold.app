@@ -3,24 +3,40 @@ date_default_timezone_set('Asia/Ho_Chi_Minh');
 error_reporting(0);
 ini_set('display_errors', '0');
 define('IN_APP', true);
-ini_set('session.gc_maxlifetime', 86400);
+
+$session_dir = __DIR__ . '/sessions';
+if (!is_dir($session_dir)) {
+    @mkdir($session_dir, 0755, true);
+    @file_put_contents($session_dir . '/.htaccess', "Deny from all\nOptions -Indexes");
+}
+@session_save_path($session_dir);
+
+ini_set('session.gc_maxlifetime', 86400 * 7); // 7 days
 session_set_cookie_params([
-    'lifetime' => 86400,
+    'lifetime' => 86400 * 7,
     'path' => '/',
     'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
     'httponly' => true,
     'samesite' => 'Strict'
 ]);
 session_start();
+
+if (isset($_SERVER['HTTP_REFERER']) && stripos($_SERVER['HTTP_REFERER'], 'google.') !== false) {
+    $_SESSION['from_google'] = true;
+}
 require_once __DIR__ . '/config/database.php';
-if (!file_exists(__DIR__ . '/.installed')) { require_once __DIR__ . '/migrate.php'; file_put_contents(__DIR__ . '/.installed', time()); }
+if (!file_exists(__DIR__ . '/.installed')) {
+    require_once __DIR__ . '/migrate.php';
+    file_put_contents(__DIR__ . '/.installed', time());
+}
 // Fetch all settings
 $settings = [];
 try {
     $r = $pdo->query("SELECT setting_key, setting_value FROM global_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
     if ($r)
         $settings = $r;
-} catch (\Throwable $e) {}
+} catch (\Throwable $e) {
+}
 // --- Agency Sub-site / White-label Logic ---
 $current_host = $_SERVER['HTTP_HOST'] ?? '';
 $current_host_domain = explode(':', $current_host)[0];
@@ -32,7 +48,8 @@ try {
         $stmtDomain->execute([$current_host_domain, str_replace('www.', '', $current_host_domain)]);
         $domain_agency = $stmtDomain->fetchColumn();
     }
-} catch (\Throwable $e) {}
+} catch (\Throwable $e) {
+}
 
 if (isset($_GET['ref'])) {
     $ref = trim($_GET['ref']);
@@ -55,7 +72,8 @@ if ($current_agency) {
                 }
             }
         }
-    } catch (\Throwable $e) {}
+    } catch (\Throwable $e) {
+    }
 }
 // -------------------------------------------
 
@@ -64,7 +82,13 @@ if ($current_agency) {
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 $route = trim(basename($uri));
-$pages = ['trang-chu' => 'home', 'huong-dan' => 'guide', 'dich-vu-vip' => 'vip', 'dang-nhap' => 'auth', 'cong-cu' => 'tool', 'lich-su' => 'history', 'admin' => 'admin', 'logout' => 'logout', 'download-dns' => 'download-dns', 'lien-he' => 'contact', 'kinh-nghiem' => 'blog', 'bai-viet' => 'article', 'thanh-toan' => 'payment', 'tao-web-con' => 'agency-setup', 'quan-ly-tai-khoan' => 'account'];
+
+if ($route === 'sitemap.xml') {
+    require __DIR__ . '/sitemap.php';
+    exit;
+}
+
+$pages = ['trang-chu' => 'home', 'huong-dan' => 'guide', 'dich-vu-vip' => 'vip', 'dang-nhap' => 'auth', 'cong-cu' => 'tool', 'lich-su' => 'history', 'admin' => 'admin', 'logout' => 'logout', 'download-dns' => 'download-dns', 'lien-he' => 'contact', 'kinh-nghiem' => 'blog', 'bai-viet' => 'article', 'thanh-toan' => 'payment', 'tao-web-con' => 'agency-setup', 'quan-ly-tai-khoan' => 'account', 'shadowrocket' => 'shadowrocket'];
 if ($route !== '' && $route !== 'index.php' && !isset($pages[$route])) {
     header("Location: /trang-chu");
     exit;
@@ -153,6 +177,27 @@ function inferCheckoutTargetFromLegacyPlan($plan)
     if (stripos($plan, 'VIP 1') !== false) {
         return 'vip1';
     }
+    if (stripos($plan, 'SR VIP') !== false) {
+        if (stripos($plan, '1 Tháng') !== false)
+            return 'sr_vip_proxy_1m';
+        if (stripos($plan, '1 Năm') !== false)
+            return 'sr_vip_proxy_1y';
+        return 'sr_vip';
+    }
+    if (stripos($plan, 'SR Premium') !== false) {
+        return 'sr_premium';
+    }
+    if (stripos($plan, 'SR Ultimate') !== false) {
+        if (stripos($plan, '1 Tháng') !== false)
+            return 'sr_ultimate_proxy_1m';
+        if (stripos($plan, '1 Năm') !== false)
+            return 'sr_ultimate_proxy_1y';
+        return 'sr_ultimate';
+    }
+    if (stripos($plan, 'Thuê Proxy US 1 Tháng') !== false)
+        return 'sr_proxy_1m';
+    if (stripos($plan, 'Thuê Proxy US 1 Năm') !== false)
+        return 'sr_proxy_1y';
     return null;
 }
 
@@ -168,6 +213,16 @@ function resolveCheckoutSelection(array $settings, $currentRole, $requestedTarge
         'vip3' => 'VIP 3 Gia Đình',
         'vip4' => 'VIP 4 Cao Cấp',
         'agency' => 'Gói Đại Lý (Agency)',
+
+        'sr_vip' => 'ShadowRocket VIP Module',
+        'sr_vip_proxy_1m' => 'SR VIP + Proxy 1 Tháng',
+        'sr_vip_proxy_1y' => 'SR VIP + Proxy 1 Năm',
+        'sr_premium' => 'ShadowRocket Premium Module',
+        'sr_ultimate' => 'ShadowRocket Ultimate Module',
+        'sr_ultimate_proxy_1m' => 'SR Ultimate + Proxy 1 Tháng',
+        'sr_ultimate_proxy_1y' => 'SR Ultimate + Proxy 1 Năm',
+        'sr_proxy_1m' => 'Thuê Proxy US 1 Tháng',
+        'sr_proxy_1y' => 'Thuê Proxy US 1 Năm',
     ];
     $shortLabels = [
         'vip1' => 'VIP 1',
@@ -175,10 +230,50 @@ function resolveCheckoutSelection(array $settings, $currentRole, $requestedTarge
         'vip3' => 'VIP 3',
         'vip4' => 'VIP 4',
         'agency' => 'Đại Lý',
+
+        'sr_vip' => 'SR VIP',
+        'sr_vip_proxy_1m' => 'SR VIP + Proxy',
+        'sr_vip_proxy_1y' => 'SR VIP + Proxy 1Y',
+        'sr_premium' => 'SR Premium',
+        'sr_ultimate' => 'SR Ultimate',
+        'sr_ultimate_proxy_1m' => 'SR Ultimate + Proxy',
+        'sr_ultimate_proxy_1y' => 'SR Ultimate + Proxy 1Y',
+        'sr_proxy_1m' => 'Proxy 1M',
+        'sr_proxy_1y' => 'Proxy 1Y',
     ];
 
     if (!isset($planLabels[$targetRole])) {
         return null;
+    }
+
+    // ShadowRocket and Proxy prices
+    $sr_prices = [
+        'sr_vip' => (int) ($settings['price_sr_vip'] ?? 49000),
+        'sr_premium' => (int) ($settings['price_sr_premium'] ?? 49000),
+        'sr_ultimate' => (int) ($settings['price_sr_ultimate'] ?? 79000),
+        'proxy_1m' => (int) ($settings['price_sr_proxy_1m'] ?? 20000),
+        'proxy_1y' => (int) ($settings['price_sr_proxy_1y'] ?? 150000),
+    ];
+    $customPrices = [
+        'sr_vip' => $sr_prices['sr_vip'],
+        'sr_vip_proxy_1m' => $sr_prices['sr_vip'] + $sr_prices['proxy_1m'],
+        'sr_vip_proxy_1y' => $sr_prices['sr_vip'] + $sr_prices['proxy_1y'],
+        'sr_premium' => $sr_prices['sr_premium'],
+        'sr_ultimate' => $sr_prices['sr_ultimate'],
+        'sr_ultimate_proxy_1m' => $sr_prices['sr_ultimate'] + $sr_prices['proxy_1m'],
+        'sr_ultimate_proxy_1y' => $sr_prices['sr_ultimate'] + $sr_prices['proxy_1y'],
+        'sr_proxy_1m' => $sr_prices['proxy_1m'],
+        'sr_proxy_1y' => $sr_prices['proxy_1y'],
+    ];
+
+    if (isset($customPrices[$targetRole])) {
+        return [
+            'target_role' => $targetRole,
+            'target_label' => $shortLabels[$targetRole],
+            'plan_label' => $planLabels[$targetRole],
+            'amount' => $customPrices[$targetRole],
+            'kind' => 'addon',
+        ];
     }
 
     if ($targetRole === 'agency') {
@@ -394,7 +489,8 @@ if ($route === 'sitemap.xml') {
             $xml .= "    <priority>0.6</priority>\n";
             $xml .= "  </url>\n";
         }
-    } catch (\Throwable $e) {}
+    } catch (\Throwable $e) {
+    }
     $xml .= '</urlset>';
     echo $xml;
     exit;
@@ -478,6 +574,11 @@ $seo = [
         "desc" => "Quản lý thông tin tài khoản, đổi mật khẩu và xem các quyền lợi hội viên của bạn trên hệ thống {$site_name}.",
         "keywords" => "quản lý tài khoản, đổi mật khẩu, locket gold",
     ],
+    "shadowrocket" => [
+        "title" => "Tải Module ShadowRocket Locket Quốc Vũ | Unlock 24+ Apps Premium",
+        "desc" => "Hướng dẫn tải và cài đặt Module ShadowRocket từ Locket Quốc Vũ. Mở khóa miễn phí 24+ ứng dụng VIP như YouTube Premium, Spotify, Locket Gold, PicsArt cực mượt.",
+        "keywords" => "locket quốc vũ, shadowrocket locket quốc vũ, tải shadowrocket, module shadowrocket, locket gold shadowrocket, youtube premium, spotify premium",
+    ],
 ];
 $current_seo = $seo[$page] ?? $seo["home"];
 $page_title = $current_seo["title"];
@@ -497,7 +598,7 @@ $page_type = "website";
 $published_time = "";
 $modified_time = date("c", filemtime(__FILE__));
 
-$canonical_paths = ["home" => "/trang-chu", "guide" => "/huong-dan", "vip" => "/dich-vu-vip", "contact" => "/lien-he", "auth" => "/dang-nhap", "tool" => "/cong-cu", "blog" => "/kinh-nghiem", "agency-setup" => "/tao-web-con", "account" => "/quan-ly-tai-khoan"];
+$canonical_paths = ["home" => "/trang-chu", "guide" => "/huong-dan", "vip" => "/dich-vu-vip", "contact" => "/lien-he", "auth" => "/dang-nhap", "tool" => "/cong-cu", "blog" => "/kinh-nghiem", "agency-setup" => "/tao-web-con", "account" => "/quan-ly-tai-khoan", "shadowrocket" => "/shadowrocket"];
 $canonical_url = $site_domain . ($canonical_paths[$page] ?? "/trang-chu");
 
 if ($page === "article") {
@@ -520,7 +621,8 @@ if ($page === "article") {
             header("Location: /trang-chu");
             exit;
         }
-    } catch (\Throwable $e) {}
+    } catch (\Throwable $e) {
+    }
 }
 
 $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofollow" : "index, follow";
@@ -614,61 +716,61 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
           "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Trang Chủ", "item": "<?= htmlspecialchars($site_domain) ?>/"}
             <?php if ($page !== "home" && $page !== "404"): ?>
-                                                            ,{"@type": "ListItem", "position": 2, "name": "<?= htmlspecialchars($page === "article" ? "Bài Viết" : ($seo[$page]["title"] ?? "Trang")) ?>", "item": "<?= htmlspecialchars($canonical_url) ?>"}
+                                                                    ,{"@type": "ListItem", "position": 2, "name": "<?= htmlspecialchars($page === "article" ? "Bài Viết" : ($seo[$page]["title"] ?? "Trang")) ?>", "item": "<?= htmlspecialchars($canonical_url) ?>"}
             <?php endif; ?>
           ]
         }
         <?php if ($page === "article" && isset($art_seo)): ?>,
-                                                        {
-                                                          "@type": "Article",
-                                                          "@id": "<?= htmlspecialchars($canonical_url) ?>/#article",
-                                                          "isPartOf": {"@id": "<?= htmlspecialchars($site_domain) ?>/#website"},
-                                                          "mainEntityOfPage": {"@id": "<?= htmlspecialchars($canonical_url) ?>"},
-                                                          "headline": "<?= htmlspecialchars($page_title) ?>",
-                                                          "description": "<?= htmlspecialchars($page_desc) ?>",
-                                                          "image": "<?= htmlspecialchars($article_meta_thumb) ?>",
-                                                          "datePublished": "<?= $published_time ?>",
-                                                          "dateModified": "<?= $modified_time ?>",
-                                                          "author": {"@type": "Person", "name": "<?= htmlspecialchars($site_name) ?>"},
-                                                          "publisher": {"@id": "<?= htmlspecialchars($site_domain) ?>/#organization"}
-                                                        }
+                                                                {
+                                                                  "@type": "Article",
+                                                                  "@id": "<?= htmlspecialchars($canonical_url) ?>/#article",
+                                                                  "isPartOf": {"@id": "<?= htmlspecialchars($site_domain) ?>/#website"},
+                                                                  "mainEntityOfPage": {"@id": "<?= htmlspecialchars($canonical_url) ?>"},
+                                                                  "headline": "<?= htmlspecialchars($page_title) ?>",
+                                                                  "description": "<?= htmlspecialchars($page_desc) ?>",
+                                                                  "image": "<?= htmlspecialchars($article_meta_thumb) ?>",
+                                                                  "datePublished": "<?= $published_time ?>",
+                                                                  "dateModified": "<?= $modified_time ?>",
+                                                                  "author": {"@type": "Person", "name": "<?= htmlspecialchars($site_name) ?>"},
+                                                                  "publisher": {"@id": "<?= htmlspecialchars($site_domain) ?>/#organization"}
+                                                                }
         <?php endif; ?>
         <?php if ($page === "tool"): ?>,
-                                                        {
-                                                          "@type": "SoftwareApplication",
-                                                          "name": "Locket Gold Premium",
-                                                          "operatingSystem": "iOS, Android",
-                                                          "applicationCategory": "UtilitiesApplication",
-                                                          "description": "Ứng dụng tiện ích hỗ trợ phân giải và tiêm cấu hình Locket Gold Premium.",
-                                                          "aggregateRating": {
-                                                            "@type": "AggregateRating",
-                                                            "ratingValue": "4.9",
-                                                            "ratingCount": "8250"
-                                                          },
-                                                          "offers": {
-                                                            "@type": "Offer",
-                                                            "price": "0",
-                                                            "priceCurrency": "VND"
-                                                          }
-                                                        }
+                                                                {
+                                                                  "@type": "SoftwareApplication",
+                                                                  "name": "Locket Gold Premium",
+                                                                  "operatingSystem": "iOS, Android",
+                                                                  "applicationCategory": "UtilitiesApplication",
+                                                                  "description": "Ứng dụng tiện ích hỗ trợ phân giải và tiêm cấu hình Locket Gold Premium.",
+                                                                  "aggregateRating": {
+                                                                    "@type": "AggregateRating",
+                                                                    "ratingValue": "4.9",
+                                                                    "ratingCount": "8250"
+                                                                  },
+                                                                  "offers": {
+                                                                    "@type": "Offer",
+                                                                    "price": "0",
+                                                                    "priceCurrency": "VND"
+                                                                  }
+                                                                }
         <?php endif; ?>
         <?php if ($page === "home"): ?>,
-                                                        {
-                                                          "@type": "FAQPage",
-                                                          "mainEntity": [
-                                                            {"@type": "Question", "name": "Locket Gold có an toàn không?", "acceptedAnswer": {"@type": "Answer", "text": "Hoàn toàn an toàn. Hệ thống sử dụng chứng chỉ Apple chính thức, không can thiệp ID Apple của bạn."}},
-                                                            {"@type": "Question", "name": "Kích hoạt Locket Gold mất bao lâu?", "acceptedAnswer": {"@type": "Answer", "text": "Hệ thống tự động xử lý và đồng bộ trạng thái Premium ngay lập tức dưới nền (khoảng 3-5s)."}}
-                                                          ]
-                                                        }
+                                                                {
+                                                                  "@type": "FAQPage",
+                                                                  "mainEntity": [
+                                                                    {"@type": "Question", "name": "Locket Gold có an toàn không?", "acceptedAnswer": {"@type": "Answer", "text": "Hoàn toàn an toàn. Hệ thống sử dụng chứng chỉ Apple chính thức, không can thiệp ID Apple của bạn."}},
+                                                                    {"@type": "Question", "name": "Kích hoạt Locket Gold mất bao lâu?", "acceptedAnswer": {"@type": "Answer", "text": "Hệ thống tự động xử lý và đồng bộ trạng thái Premium ngay lập tức dưới nền (khoảng 3-5s)."}}
+                                                                  ]
+                                                                }
         <?php endif; ?>
         <?php if ($page === "vip"): ?>,
-                                                        {
-                                                          "@type": "Product",
-                                                          "name": "Locket Gold VIP Service",
-                                                          "description": "Dịch vụ nâng cấp Locket Gold Premium chính hãng, bảo hiểm trọn đời.",
-                                                          "brand": {"@type": "Brand", "name": "<?= htmlspecialchars($site_name) ?>"},
-                                                          "offers": {"@type": "AggregateOffer", "priceCurrency": "VND", "lowPrice": "50000", "highPrice": "500000", "offerCount": "4"}
-                                                        }
+                                                                {
+                                                                  "@type": "Product",
+                                                                  "name": "Locket Gold VIP Service",
+                                                                  "description": "Dịch vụ nâng cấp Locket Gold Premium chính hãng, bảo hiểm trọn đời.",
+                                                                  "brand": {"@type": "Brand", "name": "<?= htmlspecialchars($site_name) ?>"},
+                                                                  "offers": {"@type": "AggregateOffer", "priceCurrency": "VND", "lowPrice": "50000", "highPrice": "500000", "offerCount": "4"}
+                                                                }
         <?php endif; ?>
       ]
     }
@@ -927,19 +1029,23 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
                                             <polyline points="10 9 9 9 8 9"></polyline>
                                         </svg> Quản lý hóa đơn</a>
                                 <?php endif; ?>
+                                <a href="/shadowrocket"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                    </svg> Mua ShadowRocket</a>
                                 <a href="/quan-ly-tai-khoan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg> Quản lý tài khoản</a>
                                 <?php /* 
-                                                                 <a href="/tao-web-con"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                                                                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                                                         <line x1="3" y1="9" x2="21" y2="9"></line>
-                                                                         <line x1="9" y1="21" x2="9" y2="9"></line>
-                                                                     </svg> Tạo web con</a>
-                                                                 */ ?>
+                                                                       <a href="/tao-web-con"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                                                               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                                               <line x1="3" y1="9" x2="21" y2="9"></line>
+                                                                               <line x1="9" y1="21" x2="9" y2="9"></line>
+                                                                           </svg> Tạo web con</a>
+                                                                       */ ?>
                                 <a href="/logout" class="logout-link"><svg width="16" height="16" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                         stroke-linejoin="round">
@@ -990,6 +1096,7 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
                 <a href="/huong-dan" class="sidebar-link <?= $page == 'guide' ? 'active' : '' ?>">Hướng dẫn</a>
                 <a href="/kinh-nghiem" class="sidebar-link <?= $page == 'blog' ? 'active' : '' ?>">Góc chia sẻ</a>
                 <a href="/dich-vu-vip" class="sidebar-link <?= $page == 'vip' ? 'active' : '' ?>">Bảng giá</a>
+                <a href="/shadowrocket" class="sidebar-link <?= $page == 'shadowrocket' ? 'active' : '' ?>">ShadowRocket</a>
                 <a href="/lien-he" class="sidebar-link <?= $page == 'contact' ? 'active' : '' ?>">Liên hệ</a>
 
                 <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--glass-border);">
@@ -1069,14 +1176,14 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
     <main
         class="wrap <?= in_array($page, ['home', 'auth']) ? 'center-y' : '' ?> <?= $page === 'admin' ? 'admin-full-page' : '' ?>">
 
-        
+
         <?php
-        $valid_pages = ['admin', 'home', 'auth', 'tool', 'payment', 'vip', 'guide', 'blog', 'article', 'contact', 'history', 'agency_setup', 'account'];
+        $valid_pages = ['admin', 'home', 'auth', 'tool', 'payment', 'vip', 'guide', 'blog', 'article', 'contact', 'history', 'agency_setup', 'account', 'shadowrocket'];
         if (in_array($page, $valid_pages)) {
             require __DIR__ . '/pages/' . $page . '.php';
         }
         ?>
-</main>
+    </main>
 
     <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
@@ -1529,6 +1636,15 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
                         if (normalized.includes('vip 3')) return 'vip3';
                         if (normalized.includes('vip 2')) return 'vip2';
                         if (normalized.includes('vip 1')) return 'vip1';
+                        if (normalized.includes('sr vip + proxy 1 tháng')) return 'sr_vip_proxy_1m';
+                        if (normalized.includes('sr vip + proxy 1 năm')) return 'sr_vip_proxy_1y';
+                        if (normalized.includes('sr vip module')) return 'sr_vip';
+                        if (normalized.includes('sr premium module')) return 'sr_premium';
+                        if (normalized.includes('sr ultimate + proxy 1 tháng')) return 'sr_ultimate_proxy_1m';
+                        if (normalized.includes('sr ultimate + proxy 1 năm')) return 'sr_ultimate_proxy_1y';
+                        if (normalized.includes('sr ultimate module')) return 'sr_ultimate';
+                        if (normalized.includes('thuê proxy us 1 tháng')) return 'sr_proxy_1m';
+                        if (normalized.includes('thuê proxy us 1 năm')) return 'sr_proxy_1y';
                         return '';
                     })();
                     if (inferredTarget) {
@@ -1808,4 +1924,3 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
 </body>
 
 </html>
-
