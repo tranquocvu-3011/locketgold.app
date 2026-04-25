@@ -374,6 +374,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($action)) {
         // Nhưng nếu action xử lý ở index.php, cần block
         $index_actions = [
             'upload_receipt',
+            'confirm_payment_auto',
             'admin_set_receipt_role',
             'admin_del_receipt',
             'admin_save_branding',
@@ -1512,6 +1513,7 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
         </svg>
     </div>
 
+    <?php if ($page !== 'admin'): ?>
     <div class="floating-widget floating-zalo">
         <div id="zaloPopup" class="zalo-popup">
             <a href="https://www.facebook.com/groups/1488436032791952/" target="_blank" class="zalo-popup-item"
@@ -1546,6 +1548,7 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
             Zalo
         </div>
     </div>
+    <?php endif; ?>
 
     <script>
         // Xử lý mũi tên lên đầu trang & Navbar cuộn
