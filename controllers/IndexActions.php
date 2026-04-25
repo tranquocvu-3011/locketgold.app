@@ -30,128 +30,55 @@ if (isset($_GET['ajax_check_receipt'])) {
     exit;
 }
 
-if ($action === 'upload_receipt') {
+if ($action === 'confirm_payment_auto') {
     if (!$current_user) {
         $auth_msg = "Vui lòng đăng nhập!";
-    } elseif (isset($_FILES['receipt_image']) && $_FILES['receipt_image']['error'] === UPLOAD_ERR_OK) {
-        // Chỉ cho phép 1 hóa đơn đang chờ xử lý
+    } else {
         $stmt_pending = $pdo->prepare("SELECT COUNT(*) FROM receipts WHERE username = ? AND status IN ('pending', 'chờ duyệt')");
         $stmt_pending->execute([$current_user]);
         if ($stmt_pending->fetchColumn() > 0) {
-            queueToast($toast_queue, "Bạn đang có 1 hóa đơn chờ xử lý! Vui lòng chờ hoàn tất trước khi tạo đơn mới.", "error");
-            header("Location: /trang-chu");
+            queueToast($toast_queue, "Bạn đang có yêu cầu chờ xử lý! Vui lòng chờ hoàn tất.", "warning");
+            header("Location: /quan-ly-tai-khoan");
             exit;
         }
 
         $checkout_target = $_POST['checkout_target'] ?? inferCheckoutTargetFromLegacyPlan($_POST['checkout_plan'] ?? '');
         $checkout = resolveCheckoutSelection($settings, $current_role, $checkout_target);
         if (!$checkout) {
-            queueToast($toast_queue, "Gói thanh toán không hợp lệ hoặc không còn phù hợp với cấp tài khoản hiện tại.", "error");
+            queueToast($toast_queue, "Gói thanh toán không hợp lệ.", "error");
         } else {
-            $receiptValidation = validateImageUpload(
-                $_FILES['receipt_image'],
-                ['png', 'jpg', 'jpeg', 'gif', 'webp'],
-                ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-            );
-            if (!$receiptValidation['ok']) {
-                queueToast($toast_queue, $receiptValidation['error'], "error");
-            } else {
-                $uploadDir = __DIR__ . '/../uploads/receipts/';
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0755, true);
-                }
+            $auto_status = 'pending';
+            try {
+                $stmt = $pdo->prepare("INSERT INTO receipts (username, receipt_img, agency_owner, requested_plan, requested_role, requested_amount, checkout_target, status) VALUES (?, NULL, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([
+                    $current_user,
+                    $current_agency,
+                    $checkout['plan_label'],
+                    $checkout['target_role'],
+                    (int) $checkout['amount'],
+                    $checkout['target_role'],
+                    $auto_status
+                ]);
 
-                // IMAGE COMPRESSION (Downsampling)
-                $fileName = 'receipt_' . time() . '_' . rand(1000, 9999) . '.jpg';
-                $targetPath = $uploadDir . $fileName;
-                $tmpName = $_FILES['receipt_image']['tmp_name'];
-                $imgInfo = getimagesize($tmpName);
-
-                $compressed = false;
-                if (extension_loaded('gd') && $imgInfo !== false) {
-                    $mime = $imgInfo['mime'];
-                    switch ($mime) {
-                        case 'image/jpeg':
-                            $image = @imagecreatefromjpeg($tmpName);
-                            break;
-                        case 'image/png':
-                            $image = @imagecreatefrompng($tmpName);
-                            break;
-                        case 'image/webp':
-                            $image = @imagecreatefromwebp($tmpName);
-                            break;
-                        case 'image/gif':
-                            $image = @imagecreatefromgif($tmpName);
-                            break;
-                        default:
-                            $image = false;
-                    }
-                    if ($image !== false) {
-                        $width = imagesx($image);
-                        $height = imagesy($image);
-                        // Resize if width > 800px (Faster AI Processing)
-                        $new_width = min($width, 800);
-                        $new_height = floor($height * ($new_width / $width));
-                        $new_image = imagecreatetruecolor($new_width, $new_height);
-
-                        // Handle transparency for PNG/WebP (convert to white bg)
-                        if ($mime == 'image/png' || $mime == 'image/webp') {
-                            $white = imagecolorallocate($new_image, 255, 255, 255);
-                            imagefill($new_image, 0, 0, $white);
-                        }
-
-                        imagecopyresampled($new_image, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
-                        imagejpeg($new_image, $targetPath, 75); // Nén chất lượng 75%
-                        imagedestroy($image);
-                        imagedestroy($new_image);
-                        $compressed = true;
-                    }
-                }
-
-                if (!$compressed) {
-                    move_uploaded_file($tmpName, $targetPath);
-                }
-
-                $thueapi_token = trim($settings['thueapi_token'] ?? '');
-                $auto_status = $thueapi_token ? 'pending' : 'chờ duyệt';
-
-                try {
-                    $stmt = $pdo->prepare("INSERT INTO receipts (username, receipt_img, agency_owner, requested_plan, requested_role, requested_amount, checkout_target, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([
-                        $current_user,
-                        '/uploads/receipts/' . $fileName,
-                        $current_agency,
-                        $checkout['plan_label'],
-                        $checkout['target_role'],
-                        (int) $checkout['amount'],
-                        $checkout['target_role'],
-                        $auto_status
-                    ]);
-
-                    if ($auto_status === 'pending') {
-                        // Thử gọi cron nền để check tự động luôn
-                        $cronPath = __DIR__ . '/../cron_ai_scanner.php';
-                        if (file_exists($cronPath)) {
-                            $cmd = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? "start /B php \"$cronPath\"" : "php \"$cronPath\"";
-                            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                                pclose(popen($cmd, "r"));
-                            } else {
-                                exec($cmd . " > /dev/null 2>&1 &");
-                            }
-                        }
-                        queueToast($toast_queue, "Đã tải biên lai lên! Hệ thống ngân hàng đang kiểm tra...", "info");
+                // Trigger auto-scan
+                $cronPath = __DIR__ . '/../cron_ai_scanner.php';
+                if (file_exists($cronPath)) {
+                    $cmd = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? "start /B php \"$cronPath\"" : "php \"$cronPath\"";
+                    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                        pclose(popen($cmd, "r"));
                     } else {
-                        queueToast($toast_queue, "Đã gửi hóa đơn! Vui lòng chờ admin duyệt.", "success");
+                        exec($cmd . " > /dev/null 2>&1 &");
                     }
-                } catch (Exception $e) {
                 }
-
-                header("Location: /trang-chu?success=receipt");
+                queueToast($toast_queue, "Đã gửi xác nhận! Hệ thống ngân hàng đang đối soát tự động trong 1-2 phút...", "success");
+                header("Location: /quan-ly-tai-khoan");
+                exit;
+            } catch (Exception $e) {
+                queueToast($toast_queue, "Lỗi hệ thống khi lưu yêu cầu.", "error");
+                header("Location: /quan-ly-tai-khoan");
                 exit;
             }
         }
-    } else {
-        queueToast($toast_queue, "Vui lòng chọn hình ảnh hợp lệ!", "error");
     }
 }
 
@@ -159,7 +86,7 @@ if ($action === 'upload_receipt') {
 if ($action === 'admin_set_receipt_role' && in_array($current_role, ['admin', 'agency'])) {
     $r_id = $_POST['receipt_id'] ?? 0;
     $new_role = normalizeRoleValue($_POST['role'] ?? 'user');
-    if (!in_array($new_role, ['user', 'vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin'], true)) {
+    if (!in_array($new_role, ['user', 'vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin', 'sr_vip', 'sr_premium', 'sr_ultimate', 'sr_proxy_1m', 'sr_proxy_1y', 'sr_proxy_combo_1m', 'sr_proxy_combo_1y'], true)) {
         $new_role = 'user';
     }
     $username = $_POST['username'] ?? '';
@@ -184,8 +111,49 @@ if ($action === 'admin_set_receipt_role' && in_array($current_role, ['admin', 'a
             }
         }
         if ($r_id) {
-            $stmt = $pdo->prepare("UPDATE users SET role = ?, role_expires_at = ?, is_vip_notified = 0 WHERE username = ?");
-            $stmt->execute([$new_role, getRoleExpiryAt($new_role), $username]);
+            $proxy_info = $_POST['proxy_info'] ?? null;
+            if ($proxy_info !== null) {
+                $stmt_proxy = $pdo->prepare("UPDATE users SET proxy_info = ? WHERE username = ?");
+                $stmt_proxy->execute([$proxy_info, $username]);
+            }
+            $is_sr_form = !empty($_POST['is_sr_form']);
+            
+            if ($is_sr_form || strpos($new_role, 'sr_') === 0) {
+                $stmt_role = $pdo->prepare("SELECT role FROM users WHERE username = ?");
+                $stmt_role->execute([$username]);
+                $curr = $stmt_role->fetchColumn() ?: 'user';
+                $new_roles = [];
+                foreach (explode(',', $curr) as $r) {
+                    $r = trim($r);
+                    if (strpos($r, 'sr_') !== 0 && $r !== '') $new_roles[] = $r;
+                }
+                if ($new_role !== 'user') {
+                    $new_roles[] = $new_role;
+                }
+                $final_role = implode(',', $new_roles);
+                if (empty($final_role)) $final_role = 'user';
+                $stmt = $pdo->prepare("UPDATE users SET role = ?, is_vip_notified = 0 WHERE username = ?");
+                $stmt->execute([$final_role, $username]);
+            } else {
+                $stmt_role = $pdo->prepare("SELECT role FROM users WHERE username = ?");
+                $stmt_role->execute([$username]);
+                $curr = $stmt_role->fetchColumn() ?: 'user';
+                $sr_roles = [];
+                foreach (explode(',', $curr) as $r) {
+                    $r = trim($r);
+                    if (strpos($r, 'sr_') === 0) $sr_roles[] = $r;
+                }
+                
+                $new_roles = [];
+                if ($new_role !== 'user') $new_roles[] = $new_role;
+                $new_roles = array_merge($new_roles, $sr_roles);
+                
+                $final_role = implode(',', $new_roles);
+                if (empty($final_role)) $final_role = 'user';
+                
+                $stmt = $pdo->prepare("UPDATE users SET role = ?, role_expires_at = ?, is_vip_notified = 0 WHERE username = ?");
+                $stmt->execute([$final_role, getRoleExpiryAt($new_role), $username]);
+            }
 
             $stmt = $pdo->prepare("UPDATE receipts SET status = 'hoàn thành' WHERE id = ?");
             $stmt->execute([$r_id]);
@@ -215,7 +183,7 @@ if ($action === 'admin_save_branding' && $current_role === 'admin') {
         mkdir('uploads', 0775, true);
 
     // Lưu text settings
-    $branding_keys = ['site_name', 'meta_desc', 'meta_keywords'];
+    $branding_keys = ['site_name', 'meta_desc', 'meta_keywords', 'seo_redirect_enabled', 'seo_redirect_keyword'];
     foreach ($branding_keys as $key) {
         $val = trim($_POST[$key] ?? '');
         $stmt = $pdo->prepare("INSERT INTO global_settings (setting_key, setting_value) VALUES (?,?) ON DUPLICATE KEY UPDATE setting_value=?");
@@ -454,7 +422,7 @@ if ($action === 'delete_activation' && in_array($current_role, ['admin', 'agency
 if ($action === 'admin_add_fund' && $current_role === 'admin') {
     $uname = trim($_POST['username'] ?? '');
     $role = normalizeRoleValue($_POST['role'] ?? 'user');
-    if (!in_array($role, ['user', 'vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin'], true)) {
+    if (!in_array($role, ['user', 'vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin', 'sr_vip', 'sr_premium', 'sr_ultimate', 'sr_proxy_1m', 'sr_proxy_1y', 'sr_proxy_combo_1m', 'sr_proxy_combo_1y'], true)) {
         $role = 'user';
     }
     $note = trim($_POST['note'] ?? 'Admin cấp trực tiếp');
@@ -494,7 +462,16 @@ if ($action === 'admin_save_payment_settings' && in_array($current_role, ['admin
         'price_agency',
         'price_agency_old',
         'site_name',
-        'thueapi_token'
+        'thueapi_token',
+        'price_sr_vip',
+        'price_sr_premium',
+        'price_sr_ultimate',
+        'price_sr_proxy_1m',
+        'price_sr_proxy_1y',
+        'sr_steps_free',
+        'sr_steps_vip',
+        'sr_steps_premium',
+        'sr_steps_ultimate'
     ];
 
     if ($current_role === 'agency') {
@@ -514,10 +491,50 @@ if ($action === 'admin_save_payment_settings' && in_array($current_role, ['admin
         queueToast($toast_queue, "Đã lưu cấu hình Website Đại Lý!", "success");
     } else {
         foreach ($keys as $k) {
-            $stmt = $pdo->prepare("INSERT INTO global_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-            $stmt->execute([$k, $_POST[$k] ?? '', $_POST[$k] ?? '']);
+            if (isset($_POST[$k])) {
+                $stmt = $pdo->prepare("INSERT INTO global_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $stmt->execute([$k, $_POST[$k], $_POST[$k]]);
+            }
         }
-        queueToast($toast_queue, "Đã lưu cấu hình thanh toán và giá bán!", "success");
+        
+        if (isset($_FILES['sr_video']) && $_FILES['sr_video']['error'] == UPLOAD_ERR_OK) {
+            $tmp_name = $_FILES['sr_video']['tmp_name'];
+            $upload_dir = __DIR__ . '/../uploads/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            $dest = $upload_dir . 'huong-dan-shadowrocket.mp4';
+            move_uploaded_file($tmp_name, $dest);
+        }
+
+        if (isset($_FILES['sr_proxy_video']) && $_FILES['sr_proxy_video']['error'] == UPLOAD_ERR_OK) {
+            $tmp_name = $_FILES['sr_proxy_video']['tmp_name'];
+            $upload_dir = __DIR__ . '/../uploads/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            $dest = $upload_dir . 'huong-dan-proxy.mp4';
+            move_uploaded_file($tmp_name, $dest);
+        }
+
+        if (isset($_FILES['sr_id_apple_video']) && $_FILES['sr_id_apple_video']['error'] == UPLOAD_ERR_OK) {
+            $tmp_name = $_FILES['sr_id_apple_video']['tmp_name'];
+            $upload_dir = __DIR__ . '/../uploads/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            $dest = $upload_dir . 'huong-dan-id-apple.mp4';
+            move_uploaded_file($tmp_name, $dest);
+        }
+
+        if (isset($_FILES['sr_dns_file']) && $_FILES['sr_dns_file']['error'] == UPLOAD_ERR_OK) {
+            $tmp_name = $_FILES['sr_dns_file']['tmp_name'];
+            // DNS file is at the root directory
+            $dest = __DIR__ . '/../LocketGold_Premium_DNS.mobileconfig';
+            move_uploaded_file($tmp_name, $dest);
+        }
+
+        queueToast($toast_queue, "Đã lưu cấu hình và video hướng dẫn!", "success");
     }
 }
 
@@ -576,5 +593,6 @@ if ($action === 'agency_save_settings') {
         queueToast($toast_queue, "✅ Đã lưu cài đặt website con!", "success");
     }
 }
+
 
 

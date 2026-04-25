@@ -114,8 +114,35 @@ foreach ($receipts as $receipt) {
         $pdo->prepare("UPDATE receipts SET status = 'hoàn thành', admin_note = 'Auto-approved by Bank Webhook' WHERE id = ?")->execute([$id]);
         
         // Cập nhật role cho user
-        $stmt_update = $pdo->prepare("UPDATE users SET role = ?, role_expires_at = ?, is_vip_notified = 0 WHERE username = ?");
-        $stmt_update->execute([$requested_role, getRoleExpiryAt($requested_role), $username]);
+        $stmt_role = $pdo->prepare("SELECT role FROM users WHERE username = ?");
+        $stmt_role->execute([$username]);
+        $curr = $stmt_role->fetchColumn() ?: 'user';
+        $new_roles = [];
+        $is_sr_req = (strpos($requested_role, 'sr_') === 0);
+        
+        foreach (explode(',', $curr) as $r) {
+            $r = trim($r);
+            if ($is_sr_req) {
+                // Nếu đang mua ShadowRocket -> giữ lại các quyền Locket Gold (không bắt đầu bằng sr_)
+                if (strpos($r, 'sr_') !== 0 && $r !== '') $new_roles[] = $r;
+            } else {
+                // Nếu đang mua Locket Gold -> giữ lại các quyền ShadowRocket (bắt đầu bằng sr_)
+                if (strpos($r, 'sr_') === 0) {
+                    $new_roles[] = $r;
+                }
+            }
+        }
+        if ($requested_role !== 'user') $new_roles[] = $requested_role;
+        if (empty($new_roles)) $new_roles[] = 'user';
+        $final_role = implode(',', $new_roles);
+
+        if ($is_sr_req) {
+            $stmt_update = $pdo->prepare("UPDATE users SET role = ?, is_vip_notified = 0 WHERE username = ?");
+            $stmt_update->execute([$final_role, $username]);
+        } else {
+            $stmt_update = $pdo->prepare("UPDATE users SET role = ?, role_expires_at = ?, is_vip_notified = 0 WHERE username = ?");
+            $stmt_update->execute([$final_role, getRoleExpiryAt($requested_role), $username]);
+        }
         
         echo "Receipt ID $id approved automatically via Bank Webhook.\n";
     } else {
@@ -140,5 +167,3 @@ try {
 } catch (Exception $e) {}
 
 echo "Cronjob finished.\n";
-
-

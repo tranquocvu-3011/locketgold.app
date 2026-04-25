@@ -498,67 +498,6 @@
                     </div>
                 </div>
 
-                <!-- ══ SHADOW ROCKET MODULE ══ -->
-                <div class="card" id="shadowrocket-box"
-                    style="max-width:var(--layout-max); margin-top:20px; border:1px solid rgba(59,130,246,0.35); background:linear-gradient(135deg, rgba(59,130,246,0.07), rgba(167,139,250,0.05));">
-                    <div style="display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;">
-                        <div
-                            style="width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:rgba(59,130,246,0.14); color:#3b82f6; flex-shrink:0;">
-                            <!-- rocket icon -->
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2.2">
-                                <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2l-.96-.96a2 2 0 0 0-2.08-.08z" />
-                                <path
-                                    d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
-                                <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
-                                <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
-                            </svg>
-                        </div>
-                        <div style="flex:1; min-width:260px;">
-                            <h3 style="font-size:20px; font-weight:800; margin-bottom:6px; color:var(--text-0);">
-                                Kích hoạt bằng Shadow Rocket
-                            </h3>
-                            <p class="desc" style="margin-bottom:14px; line-height:1.6; font-size:13.5px;">
-                                Dùng Shadow Rocket trên iPhone để kết nối DNS tùy chỉnh. Sao chép link module bên dưới rồi dán
-                                vào ứng dụng Shadow Rocket để cài đặt.
-                            </p>
-
-                            <!-- Link module + nút sao chép -->
-                            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                                <div
-                                    style="flex:1; min-width:200px; display:flex; align-items:center; gap:0; background:var(--bg-0); border:1.5px solid rgba(59,130,246,0.3); border-radius:12px; overflow:hidden;">
-                                    <span
-                                        style="padding:12px 14px; font-size:12px; color:var(--text-2); flex-shrink:0;">🔗</span>
-                                    <input id="shadowrocket-link" type="text" readonly
-                                        value="https://raw.githubusercontent.com/tranquocvu-3011/QuocVu_Scripts/main/QuocVu_Premium.module"
-                                        style="flex:1; border:none; background:transparent; font-size:12px; font-family:monospace; color:var(--text-1); padding:12px 8px 12px 0; outline:none; min-width:0; cursor:text;"
-                                        onclick="this.select();">
-                                </div>
-                                <button id="copy-sr-btn" type="button" onclick="copyShadowRocketLink()"
-                                    style="padding:12px 20px; border-radius:12px; border:none; background:linear-gradient(135deg,#3b82f6,#6366f1); color:#fff; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:8px; white-space:nowrap; transition:all 0.2s;"
-                                    onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 20px rgba(59,130,246,0.4)';"
-                                    onmouseout="this.style.transform=''; this.style.boxShadow='';">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2.5">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                    </svg>
-                                    Sao chép
-                                </button>
-                            </div>
-
-                            <!-- Hướng dẫn nhanh -->
-                            <div
-                                style="margin-top:14px; padding:12px 14px; background:rgba(59,130,246,0.07); border-radius:10px; border:1px dashed rgba(59,130,246,0.25);">
-                                <p style="font-size:12.5px; color:var(--text-2); margin:0; line-height:1.7;">
-                                    <strong style="color:var(--text-1);">Hướng dẫn nhanh:</strong>
-                                    Mở Shadow Rocket → Config → Module → Dán link trên → Tải về &amp; Bật module.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- PROCESSING UI -->
                 <div class="card proc" id="proc-ui" style="max-width:680px;">
                     <div class="spinner"></div>
@@ -595,11 +534,9 @@
                         var grid = document.getElementById('tool-grid');
                         var header = document.getElementById('tool-header');
                         var reactivate = document.getElementById('reactivate-box');
-                        var shadowrocket = document.getElementById('shadowrocket-box');
                         if (grid) grid.style.display = 'none';
                         if (header) header.style.display = 'none';
                         if (reactivate) reactivate.style.display = 'none';
-                        if (shadowrocket) shadowrocket.style.display = 'none';
                         document.getElementById('proc-ui').classList.add('show');
                         const steps = ['s0', 's1', 's2', 's3', 's4'];
                         steps.forEach((id, i) => setTimeout(() => document.getElementById(id).classList.add('show'), 600 + i * 1000));
@@ -609,25 +546,7 @@
                         }, 5600);
                     }
 
-                    function copyShadowRocketLink() {
-                        var input = document.getElementById('shadowrocket-link');
-                        var btn = document.getElementById('copy-sr-btn');
-                        if (!input) return;
-                        navigator.clipboard.writeText(input.value).then(function () {
-                            btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Đã sao chép!';
-                            btn.style.background = 'linear-gradient(135deg,#10b981,#059669)';
-                            setTimeout(function () {
-                                btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Sao chép';
-                                btn.style.background = 'linear-gradient(135deg,#3b82f6,#6366f1)';
-                            }, 2000);
-                        }).catch(function () {
-                            input.select();
-                            document.execCommand('copy');
-                            if (typeof window.showToast === 'function') {
-                                window.showToast('Đã sao chép link module!', 'success');
-                            }
-                        });
-                    }
+
                 </script>
             <?php endif; ?>
         <?php endif; ?>

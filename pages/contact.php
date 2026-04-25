@@ -3,7 +3,7 @@
             <?php
             $contacts = [];
             try {
-                $contacts = $pdo->query("SELECT * FROM contacts ORDER BY id ASC")->fetchAll();
+                $contacts = $pdo->query("SELECT * FROM contacts ORDER BY order_index ASC, id ASC")->fetchAll();
             } catch (Exception $e) {
             }
             $contact_count = count($contacts);

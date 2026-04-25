@@ -42,11 +42,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($action === 'admin_add_user') {
             $u = strtolower(htmlspecialchars(trim($_POST['username'] ?? '')));
             $p = trim($_POST['password']);
-            $r = normalizeRoleValue($_POST['role'] ?? 'user');
-            if (!in_array($r, ['user', 'vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin'], true)) {
-                $r = 'user';
+            $base_r = normalizeRoleValue($_POST['role'] ?? 'user');
+            $sr_r = normalizeRoleValue($_POST['sr_role'] ?? '');
+            
+            $final_roles = [];
+            if (in_array($base_r, ['vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin'])) {
+                $final_roles[] = $base_r;
+            } else {
+                $final_roles[] = 'user';
             }
-            $exp = getRoleExpiryAt($r);
+            if (in_array($sr_r, ['sr_vip', 'sr_premium', 'sr_ultimate'])) {
+                $final_roles[] = $sr_r;
+            }
+            $r = implode(',', $final_roles);
+            $exp = getRoleExpiryAt($base_r);
             
             // Ép buộc admin cũng phải nhập đúng nguyên tắc Gmail
             if ($u && $p) {
@@ -63,18 +72,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         if ($action === 'admin_edit_user') {
             $id = intval($_POST['user_id']);
-            $r = normalizeRoleValue($_POST['role'] ?? 'user');
-            if (!in_array($r, ['user', 'vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin'], true)) {
-                $r = 'user';
+            $base_r = normalizeRoleValue($_POST['role'] ?? 'user');
+            $sr_r = normalizeRoleValue($_POST['sr_role'] ?? '');
+            
+            $final_roles = [];
+            if (in_array($base_r, ['vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin'])) {
+                $final_roles[] = $base_r;
+            } else {
+                $final_roles[] = 'user';
             }
+            if (in_array($sr_r, ['sr_vip', 'sr_premium', 'sr_ultimate'])) {
+                $final_roles[] = $sr_r;
+            }
+            $r = implode(',', $final_roles);
+            
             $p = trim($_POST['password']);
-            $exp = getRoleExpiryAt($r);
+            $proxy_info = $_POST['proxy_info'] ?? null;
+            $exp = getRoleExpiryAt($base_r);
             if ($id) {
                 if ($p) {
                     $hash = password_hash($p, PASSWORD_BCRYPT);
-                    $pdo->prepare("UPDATE users SET role = ?, password = ?, role_expires_at = ?, is_vip_notified = 0 WHERE id = ?")->execute([$r, $hash, $exp, $id]);
+                    $pdo->prepare("UPDATE users SET role = ?, password = ?, proxy_info = ?, role_expires_at = ?, is_vip_notified = 0 WHERE id = ?")->execute([$r, $hash, $proxy_info, $exp, $id]);
                 } else {
-                    $pdo->prepare("UPDATE users SET role = ?, role_expires_at = ?, is_vip_notified = 0 WHERE id = ?")->execute([$r, $exp, $id]);
+                    $pdo->prepare("UPDATE users SET role = ?, proxy_info = ?, role_expires_at = ?, is_vip_notified = 0 WHERE id = ?")->execute([$r, $proxy_info, $exp, $id]);
                 }
                 pushFlashToast("Đã cập nhật tài khoản thành công.", 'success');
             }
@@ -101,8 +121,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $url = trim($_POST['c_url']);
             $type = trim($_POST['c_type']);
             if ($name && $url) {
-                $pdo->prepare("INSERT INTO contacts (platform_name, link_url, type) VALUES (?, ?, ?)")->execute([$name, $url, $type]);
+                // Set order_index = max(order_index) + 1
+                $stmt = $pdo->query("SELECT MAX(order_index) FROM contacts");
+                $maxIdx = (int)$stmt->fetchColumn();
+                $pdo->prepare("INSERT INTO contacts (platform_name, link_url, type, order_index) VALUES (?, ?, ?, ?)")->execute([$name, $url, $type, $maxIdx + 1]);
                 pushFlashToast("Đã thêm kênh liên hệ.", 'success');
+            }
+            header("Location: /admin?tab=contacts"); exit;
+        }
+        if ($action === 'admin_edit_contact') {
+            $id = intval($_POST['c_id']);
+            $name = trim($_POST['c_name']);
+            $url = trim($_POST['c_url']);
+            $type = trim($_POST['c_type']);
+            if ($id && $name && $url) {
+                $pdo->prepare("UPDATE contacts SET platform_name = ?, link_url = ?, type = ? WHERE id = ?")->execute([$name, $url, $type, $id]);
+                pushFlashToast("Đã cập nhật kênh liên hệ.", 'success');
+            }
+            header("Location: /admin?tab=contacts"); exit;
+        }
+        if ($action === 'admin_move_contact') {
+            $id = intval($_POST['c_id']);
+            $dir = $_POST['direction'] ?? 'up';
+            // Khởi tạo order_index nếu cần
+            $pdo->exec("UPDATE contacts SET order_index = id WHERE order_index = 0");
+            
+            $stmt = $pdo->prepare("SELECT id, order_index FROM contacts WHERE id = ?");
+            $stmt->execute([$id]);
+            $curr = $stmt->fetch();
+            if ($curr) {
+                if ($dir === 'up') {
+                    $target = $pdo->prepare("SELECT id, order_index FROM contacts WHERE order_index < ? ORDER BY order_index DESC, id DESC LIMIT 1");
+                } else {
+                    $target = $pdo->prepare("SELECT id, order_index FROM contacts WHERE order_index > ? ORDER BY order_index ASC, id ASC LIMIT 1");
+                }
+                $target->execute([$curr['order_index']]);
+                $t = $target->fetch();
+                if ($t) {
+                    $tmpIdx = $t['order_index'];
+                    $pdo->prepare("UPDATE contacts SET order_index = ? WHERE id = ?")->execute([$tmpIdx, $curr['id']]);
+                    $pdo->prepare("UPDATE contacts SET order_index = ? WHERE id = ?")->execute([$curr['order_index'], $t['id']]);
+                    pushFlashToast("Đã thay đổi vị trí.", 'success');
+                }
             }
             header("Location: /admin?tab=contacts"); exit;
         }
@@ -249,7 +309,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($action === 'set_role' && $current_role === 'admin') {
         $target_user = $_POST['target_user'] ?? '';
         $new_role = normalizeRoleValue($_POST['new_role'] ?? 'user');
-        if (!in_array($new_role, ['user', 'vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin'], true)) {
+        if (!in_array($new_role, ['user', 'vip1', 'vip2', 'vip3', 'vip4', 'agency', 'admin', 'sr_vip', 'sr_premium', 'sr_ultimate', 'sr_proxy_1m', 'sr_proxy_1y', 'sr_proxy_combo_1m', 'sr_proxy_combo_1y'], true)) {
             $new_role = 'user';
         }
         if ($target_user) {
@@ -654,4 +714,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
     }
 }
+
 

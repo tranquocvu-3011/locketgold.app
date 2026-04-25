@@ -33,6 +33,7 @@ try {
         phone VARCHAR(20) DEFAULT NULL,
         register_ip VARCHAR(45) DEFAULT NULL,
         role_expires_at DATETIME NULL,
+        proxy_info TEXT DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
 
@@ -183,8 +184,12 @@ try {
         id INT AUTO_INCREMENT PRIMARY KEY,
         platform_name VARCHAR(100),
         link_url VARCHAR(255),
-        type VARCHAR(50) DEFAULT 'other'
+        type VARCHAR(50) DEFAULT 'other',
+        order_index INT DEFAULT 0
     )");
+    try {
+        $pdo->exec("ALTER TABLE contacts ADD COLUMN order_index INT DEFAULT 0");
+    } catch (Exception $e) {}
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS feedbacks (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -229,6 +234,12 @@ try {
 // Auto-migrate: is_vip_notified
 try {
     $pdo->exec("ALTER TABLE users ADD COLUMN is_vip_notified TINYINT(1) DEFAULT 0");
+} catch (Exception $e) {
+}
+
+// Auto-migrate: proxy_info
+try {
+    $pdo->exec("ALTER TABLE users ADD COLUMN proxy_info TEXT DEFAULT NULL");
 } catch (Exception $e) {
 }
 

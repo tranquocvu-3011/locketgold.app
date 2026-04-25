@@ -34,6 +34,19 @@
             $bank_account = $gs['bank_account'] ?? '';
             $bank_owner = $gs['bank_owner'] ?? '';
             $addInfo = explode('@', trim($current_user))[0]; // Bỏ @gmail.com để nội dung VietQR sạch sẽ, không bị ngân hàng chặn
+            
+            // Thêm tên gói nếu là mua ShadowRocket
+            if (strpos($checkout['target_role'], 'sr_') === 0) {
+                if ($checkout['target_role'] === 'sr_vip') {
+                    $addInfo .= ' vip15s';
+                } elseif ($checkout['target_role'] === 'sr_premium') {
+                    $addInfo .= ' premium';
+                } elseif ($checkout['target_role'] === 'sr_ultimate') {
+                    $addInfo .= ' ultimate';
+                } else {
+                    $addInfo .= ' ' . str_replace('sr_', '', $checkout['target_role']);
+                }
+            }
         
             // Generate VietQR URL
             $qr_url = "https://img.vietqr.io/image/{$bank_code}-{$bank_account}-compact2.png?amount=$price&addInfo=" . urlencode($addInfo) . "&accountName=" . urlencode($bank_owner);
@@ -102,25 +115,26 @@
                             </div>
                         </div>
 
-                        <!-- Upload Form -->
+                        <!-- Auto Bank Instruction -->
                         <div
-                            style="width:100%; background:var(--bg-2); padding:20px; border-radius:16px; border:1px solid var(--border); margin-bottom:24px;">
-                            <h3 style="font-size:15px; margin-bottom:10px; color:var(--text-0);">Xác nhận thanh toán</h3>
-                            <p style="font-size:13px; color:var(--text-2); margin-bottom:15px;">Sau khi thanh toán thành công,
-                                vui lòng tải lên hình ảnh chụp màn hình biên lai chuyển khoản để tự động kích hoạt gói.</p>
-                            <form action="/thanh-toan" method="POST" enctype="multipart/form-data"
-                                style="display:flex; flex-direction:column; gap:12px;">
-                                <input type="hidden" name="action" value="upload_receipt">
+                            style="width:100%; background:var(--bg-2); padding:20px; border-radius:16px; border:1px solid var(--border); margin-bottom:24px; text-align:center;">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px;">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                            <h3 style="font-size:16px; margin-bottom:8px; color:var(--text-0);">Hệ thống duyệt tự động</h3>
+                            <p style="font-size:14px; color:var(--text-2); margin-bottom:15px; line-height:1.5;">
+                                Bạn <strong>không cần tải lên hóa đơn</strong>.<br>
+                                Ngay sau khi bạn chuyển khoản đúng <strong>Số tiền</strong> và <strong>Nội dung</strong>, hệ thống sẽ tự động đối soát và nâng cấp tài khoản của bạn trong <strong>1 - 2 phút</strong>.
+                            </p>
+                            <form action="/thanh-toan" method="POST" style="display:flex; flex-direction:column; gap:12px;">
+                                <input type="hidden" name="action" value="confirm_payment_auto">
                                 <?= csrf_field() ?>
-                                <input type="hidden" name="checkout_target"
-                                    value="<?= htmlspecialchars($checkout['target_role']) ?>">
-                                <input type="hidden" name="checkout_plan"
-                                    value="<?= htmlspecialchars($checkout['plan_label']) ?>">
-                                <input type="file" name="receipt_image" accept="image/*" required class="input"
-                                    style="padding:10px; border:1px dashed var(--border-accent); background:var(--bg-0);">
-                                <button type="submit" class="btn btn-primary"
-                                    style="border-radius:var(--radius-full); justify-content:center; padding:16px; font-size:16px;">
-                                    Tải lên hóa đơn thủ công</button>
+                                <input type="hidden" name="checkout_target" value="<?= htmlspecialchars($checkout['target_role']) ?>">
+                                <input type="hidden" name="checkout_plan" value="<?= htmlspecialchars($checkout['plan_label']) ?>">
+                                <button type="submit" class="btn btn-primary" style="border-radius:var(--radius-full); justify-content:center; padding:16px; font-size:16px; width:100%;">
+                                    Tôi đã chuyển khoản xong
+                                </button>
                             </form>
                         </div>
 

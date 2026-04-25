@@ -1982,7 +1982,7 @@
                             <table class="tbl">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th>STT</th>
                                         <th>Loại</th>
                                         <th>Tên hiển thị</th>
                                         <th>Liên kết (URL)</th>
@@ -1990,9 +1990,11 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($pdo->query("SELECT * FROM contacts ORDER BY id DESC")->fetchAll() as $c): ?>
+                                    <?php 
+                                    $contactsList = $pdo->query("SELECT * FROM contacts ORDER BY order_index ASC, id ASC")->fetchAll();
+                                    foreach ($contactsList as $index => $c): ?>
                                         <tr>
-                                            <td data-label="ID" style="color:var(--text-2)">#<?= $c['id'] ?></td>
+                                            <td data-label="STT" style="color:var(--text-2); font-weight:bold;">#<?= $index + 1 ?></td>
                                             <td data-label="Loại"><span class="tag tag-gray"
                                                     style="text-transform:uppercase;"><?= htmlspecialchars($c['type'] ?? 'other') ?></span>
                                             </td>
@@ -2004,7 +2006,22 @@
                                                     href="<?= htmlspecialchars($c['link_url']) ?>" target="_blank"
                                                     style="color:inherit; text-decoration:none;"><?= htmlspecialchars($c['link_url']) ?></a>
                                             </td>
-                                            <td class="td-actions" data-label="Thao tác">
+                                            <td class="td-actions" data-label="Thao tác" style="white-space: nowrap;">
+                                                <form method="POST" style="display:inline;">
+                                                    <input type="hidden" name="action" value="admin_move_contact">
+                                                    <input type="hidden" name="direction" value="up">
+                                                    <input type="hidden" name="c_id" value="<?= $c['id'] ?>">
+                                                    <button type="submit" class="action-btn" title="Lên trên" <?= $index === 0 ? 'disabled style="opacity:0.3;"' : '' ?>><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
+                                                </form>
+                                                <form method="POST" style="display:inline;">
+                                                    <input type="hidden" name="action" value="admin_move_contact">
+                                                    <input type="hidden" name="direction" value="down">
+                                                    <input type="hidden" name="c_id" value="<?= $c['id'] ?>">
+                                                    <button type="submit" class="action-btn" title="Xuống dưới" <?= $index === count($contactsList) - 1 ? 'disabled style="opacity:0.3;"' : '' ?>><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                                                </form>
+                                                <button type="button" class="action-btn edit" title="Sửa liên hệ" onclick="openEditContactModal(<?= $c['id'] ?>, '<?= htmlspecialchars(addslashes($c['platform_name'])) ?>', '<?= htmlspecialchars(addslashes($c['link_url'])) ?>', '<?= htmlspecialchars($c['type'] ?? 'other') ?>')">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                                </button>
                                                 <form method="POST" style="display:inline;"
                                                     onsubmit="return confirm('Chắc chắn xóa liên hệ này?');">
                                                     <input type="hidden" name="action" value="admin_del_contact">
@@ -2025,6 +2042,65 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- Modal Sửa Liên Hệ -->
+                    <div id="modal-edit-contact" class="admin-modal">
+                        <div class="modal-content" style="max-width:500px;">
+                            <div class="modal-header">
+                                <h3>Sửa thông tin Liên hệ</h3>
+                                <button class="btn-close" onclick="closeModal('modal-edit-contact')"><svg width="24"
+                                        height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <line x1="18" y1="6" x2="6" y2="18" />
+                                        <line x1="6" y1="6" x2="18" y2="18" />
+                                    </svg></button>
+                            </div>
+                            <div class="modal-body">
+                                <form method="POST">
+                                    <input type="hidden" name="action" value="admin_edit_contact">
+                                    <input type="hidden" name="c_id" id="edit_c_id" value="">
+                                    <div class="form-grid">
+                                        <div class="field">
+                                            <label>Tên hiển thị</label>
+                                            <input type="text" name="c_name" id="edit_c_name" class="input" required>
+                                        </div>
+                                        <div class="field">
+                                            <label>Đường link (URL)</label>
+                                            <input type="url" name="c_url" id="edit_c_url" class="input" required>
+                                        </div>
+                                        <div class="field">
+                                            <label>Biểu tượng (Icon)</label>
+                                            <select name="c_type" id="edit_c_type" class="input" style="cursor:pointer;">
+                                                <option value="zalo">Zalo</option>
+                                                <option value="facebook">Facebook</option>
+                                                <option value="telegram">Telegram</option>
+                                                <option value="youtube">YouTube</option>
+                                                <option value="instagram">Instagram</option>
+                                                <option value="tiktok">TikTok</option>
+                                                <option value="threads">Threads</option>
+                                                <option value="other">Khác</option>
+                                            </select>
+                                        </div>
+                                        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                                            <button type="button" class="btn btn-outline btn-sm"
+                                                onclick="closeModal('modal-edit-contact')">Hủy</button>
+                                            <button type="submit" class="btn btn-primary btn-sm">Lưu thay đổi</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                        function openEditContactModal(id, name, url, type) {
+                            document.getElementById('edit_c_id').value = id;
+                            document.getElementById('edit_c_name').value = name;
+                            document.getElementById('edit_c_url').value = url;
+                            document.getElementById('edit_c_type').value = type;
+                            showModal('modal-edit-contact');
+                        }
+                    </script>
 
                     <!-- Modal Thêm Liên Hệ -->
                     <div id="modal-add-contact" class="admin-modal">

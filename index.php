@@ -1516,7 +1516,7 @@ $robots_content = in_array($page, ["admin", "history", "tool"]) ? "noindex, nofo
     <?php
     $global_contacts = [];
     try {
-        $global_contacts = $pdo->query("SELECT * FROM contacts ORDER BY id ASC")->fetchAll();
+        $global_contacts = $pdo->query("SELECT * FROM contacts ORDER BY order_index ASC, id ASC")->fetchAll();
     } catch (Exception $e) {}
     ?>
     <?php if (!empty($global_contacts)): ?>

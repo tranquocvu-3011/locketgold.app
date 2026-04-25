@@ -336,10 +336,19 @@
                                             ?>
                                             <div
                                                 style="display:flex; align-items:center; gap:16px; padding: 16px; background:var(--bg-0); border:1px solid var(--border); border-radius:12px;">
-                                                <div onclick="Swal.fire({imageUrl: '<?= htmlspecialchars($r['receipt_img']) ?>', showConfirmButton: false, showCloseButton: true, background: 'transparent', backdrop: 'rgba(0,0,0,0.8)'})"
-                                                    style="flex-shrink:0; cursor:pointer; width:45px; height:60px; border-radius:6px; background-image:url('<?= htmlspecialchars($r['receipt_img']) ?>'); background-size:cover; background-position:center; border:1px solid var(--border-accent); box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.2s;"
-                                                    onmouseover="this.style.transform='scale(1.05)'"
-                                                    onmouseout="this.style.transform='scale(1)'" title="Bấm để phóng to ảnh"></div>
+                                                <?php if (empty($r['receipt_img'])): ?>
+                                                    <div style="flex-shrink:0; width:45px; height:60px; border-radius:6px; background:rgba(16,185,129,0.1); border:1px dashed #10b981; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#10b981;">
+                                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                                        </svg>
+                                                        <span style="font-size:9px; font-weight:700; margin-top:4px;">AUTO</span>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div onclick="Swal.fire({imageUrl: '<?= htmlspecialchars($r['receipt_img']) ?>', showConfirmButton: false, showCloseButton: true, background: 'transparent', backdrop: 'rgba(0,0,0,0.8)'})"
+                                                        style="flex-shrink:0; cursor:pointer; width:45px; height:60px; border-radius:6px; background-image:url('<?= htmlspecialchars($r['receipt_img']) ?>'); background-size:cover; background-position:center; border:1px solid var(--border-accent); box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.2s;"
+                                                        onmouseover="this.style.transform='scale(1.05)'"
+                                                        onmouseout="this.style.transform='scale(1)'" title="Bấm để phóng to ảnh"></div>
+                                                <?php endif; ?>
                                                 <div style="flex:1; min-width:0;">
                                                     <div
                                                         style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
